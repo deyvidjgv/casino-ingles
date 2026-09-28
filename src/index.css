@@ -1,0 +1,88 @@
+/* Nebula palette + type tokens (see PROMPT-FINAL.md §11) */
+:root {
+  --space-deep: #0b0d2a;
+  --space-mid: #1a1e4a;
+  --nebula-purple: #7b2ff7;
+  --nebula-pink: #f72585;
+  --star-cyan: #4cc9f0;
+  --gold-jackpot: #ffd166;
+  --text-main: #f1f3ff;
+  --text-soft: #a5a9d6;
+  --success: #06d6a0;
+  --danger: #ef476f;
+
+  --font-display: 'Orbitron', system-ui, sans-serif;
+  --font-numbers: 'Audiowide', system-ui, sans-serif;
+  --font-body: 'Exo 2', system-ui, sans-serif;
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--space-deep);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--star-cyan);
+  outline-offset: 2px;
+}
+
+/* ---------- chamfered sci-fi surface (buttons, panels): no rounded corners ----------
+   The element paints the edge colour; ::before paints the fill 1px inside, so the cut
+   corners keep a visible outline. Tune per element with --cut / --edge / --fill. */
+.rc-cut {
+  --cut: 10px;
+  --edge: rgba(76, 201, 240, 0.4);
+  --fill: rgba(26, 30, 74, 0.82);
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  border-radius: 0;
+  background: var(--edge);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  transition: --edge 0.2s, background-color 0.2s;
+}
+
+.rc-cut::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  background: var(--fill);
+  clip-path: polygon(calc(var(--cut) - 0.4px) 0, 100% 0, 100% calc(100% - var(--cut) + 0.4px), calc(100% - var(--cut) + 0.4px) 100%, 0 100%, 0 calc(var(--cut) - 0.4px));
+}
+
+button.rc-cut:hover,
+button.rc-cut:focus-visible {
+  --edge: rgba(255, 209, 102, 0.95);
+  --fill: rgba(40, 36, 92, 0.9);
+  text-shadow: 0 0 12px rgba(255, 209, 102, 0.7);
+}
+
+button.rc-cut:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

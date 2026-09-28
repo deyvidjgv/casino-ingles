@@ -1,0 +1,285 @@
+/* Mystery Black Hole — Cosmic Floating Boxes & Singularity Styles */
+
+.my-play {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1100px;
+  gap: 20px;
+  perspective: 1200px;
+}
+
+/* Singularity Arena */
+.my-arena {
+  position: relative;
+  width: 100%;
+  min-height: 520px;
+  background: radial-gradient(circle at 50% 50%, #03040e 0%, #090b24 55%, #050616 100%);
+  border: 3px solid var(--gold-jackpot);
+  box-shadow:
+    0 0 40px rgba(255, 209, 102, 0.35),
+    inset 0 0 70px rgba(123, 47, 247, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  overflow: hidden;
+  clip-path: polygon(24px 0, calc(100% - 24px) 0, 100% 24px, 100% calc(100% - 24px), calc(100% - 24px) 100%, 24px 100%, 0 calc(100% - 24px), 0 24px);
+}
+
+/* Rotating Accretion Disk */
+.my-blackhole-disk {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 440px;
+  height: 440px;
+  transform: translate(-50%, -50%) rotateX(68deg);
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(247, 37, 133, 0.8),
+    rgba(255, 209, 102, 0.9),
+    rgba(76, 201, 240, 0.8),
+    rgba(123, 47, 247, 0.9),
+    rgba(247, 37, 133, 0.8)
+  );
+  filter: blur(14px);
+  animation: my-spin-disk 14s linear infinite;
+  pointer-events: none;
+  opacity: 0.65;
+}
+
+@keyframes my-spin-disk {
+  from { transform: translate(-50%, -50%) rotateX(68deg) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotateX(68deg) rotate(360deg); }
+}
+
+/* Singularity Core (Pitch Black Sphere) */
+.my-blackhole-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 140px;
+  background: #020208;
+  border-radius: 50%;
+  box-shadow:
+    0 0 30px #000,
+    0 0 50px rgba(76, 201, 240, 0.5),
+    0 0 80px rgba(247, 37, 133, 0.4);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.my-blackhole-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 165px;
+  height: 165px;
+  border: 3px solid rgba(255, 209, 102, 0.85);
+  border-radius: 50%;
+  box-shadow: 0 0 20px var(--gold-jackpot);
+  pointer-events: none;
+  z-index: 1;
+  animation: my-pulse-ring 3s ease-in-out infinite alternate;
+}
+
+@keyframes my-pulse-ring {
+  from { transform: translate(-50%, -50%) scale(0.96); opacity: 0.7; }
+  to { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+}
+
+/* Floating Boxes Grid */
+.my-boxes-stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  width: 100%;
+  max-width: 900px;
+  z-index: 2;
+  perspective: 1000px;
+}
+
+/* Individual Mystery Box Wrapper */
+.my-box-wrap {
+  position: relative;
+  width: 135px;
+  height: 155px;
+  cursor: pointer;
+  perspective: 800px;
+  transition: transform 0.3s ease;
+}
+
+.my-box-wrap:hover:not(.is-opened):not(.is-opening) {
+  transform: scale(1.08) translateY(-6px);
+}
+
+.my-box-wrap.is-opened {
+  cursor: default;
+  opacity: 0.55;
+  filter: grayscale(0.5);
+}
+
+/* Floating Animation */
+.my-float-1 { animation: my-float 3.4s ease-in-out infinite alternate; }
+.my-float-2 { animation: my-float 2.8s ease-in-out infinite alternate 0.5s; }
+.my-float-3 { animation: my-float 3.2s ease-in-out infinite alternate 1.0s; }
+.my-float-4 { animation: my-float 2.6s ease-in-out infinite alternate 1.5s; }
+.my-float-5 { animation: my-float 3.5s ease-in-out infinite alternate 0.7s; }
+.my-float-6 { animation: my-float 2.9s ease-in-out infinite alternate 1.2s; }
+
+@keyframes my-float {
+  from { transform: translateY(0px); }
+  to { transform: translateY(-14px); }
+}
+
+/* 3D Box Container */
+.my-box-3d {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+/* Box Body */
+.my-box-body {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 110px;
+  background: linear-gradient(145deg, #1f1545 0%, #11092e 100%);
+  border: 2px solid var(--gold-jackpot);
+  border-radius: 12px;
+  box-shadow:
+    0 0 25px rgba(255, 209, 102, 0.4),
+    inset 0 0 15px rgba(247, 37, 133, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  overflow: hidden;
+}
+
+/* Halo around box */
+.my-box-halo {
+  position: absolute;
+  inset: -12px;
+  border-radius: 20px;
+  background: radial-gradient(circle, rgba(255, 209, 102, 0.25) 0%, rgba(247, 37, 133, 0.15) 50%, transparent 75%);
+  filter: blur(8px);
+  pointer-events: none;
+  animation: my-halo-pulse 2s infinite alternate;
+}
+
+@keyframes my-halo-pulse {
+  from { opacity: 0.5; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1.08); }
+}
+
+/* Box Lid (Opens in 3D) */
+.my-box-lid {
+  position: absolute;
+  top: 15px;
+  left: -2px;
+  width: calc(100% + 4px);
+  height: 35px;
+  background: linear-gradient(135deg, #2f1d6b 0%, #1a0e42 100%);
+  border: 2px solid var(--star-cyan);
+  border-radius: 10px 10px 4px 4px;
+  box-shadow: 0 0 15px rgba(76, 201, 240, 0.5);
+  transform-origin: top center;
+  transition: transform 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  z-index: 3;
+}
+
+.my-box-wrap.is-opened .my-box-lid,
+.my-box-wrap.is-opening .my-box-lid {
+  transform: rotateX(-120deg) translateY(-8px);
+}
+
+.my-box-icon {
+  font-size: 32px;
+  filter: drop-shadow(0 0 10px var(--gold-jackpot));
+}
+
+.my-box-num {
+  font-family: var(--font-numbers);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--gold-jackpot);
+}
+
+.my-box-status {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+/* Floating Reward emerging from box */
+.my-content-reveal {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  padding: 12px;
+  background: rgba(16, 19, 54, 0.95);
+  border: 2px solid var(--star-cyan);
+  box-shadow: 0 0 30px rgba(76, 201, 240, 0.7);
+  border-radius: 10px;
+  text-align: center;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.my-reveal-tag {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-jackpot);
+}
+
+.my-reveal-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 12px var(--star-cyan);
+}
+
+.my-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  z-index: 2;
+}
+
+@media (max-width: 768px) {
+  .my-box-wrap {
+    width: 105px;
+    height: 130px;
+  }
+  .my-boxes-stage {
+    gap: 16px;
+  }
+  .my-box-icon {
+    font-size: 24px;
+  }
+}

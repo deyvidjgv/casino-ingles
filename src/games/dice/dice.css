@@ -1,0 +1,259 @@
+/* Dice Asteroid — Cosmic Crystal Dice Styles */
+
+.dc-play {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1050px;
+  gap: 20px;
+  perspective: 1200px;
+}
+
+/* Asteroid Arena Surface */
+.dc-arena {
+  position: relative;
+  width: 100%;
+  min-height: 480px;
+  background: radial-gradient(ellipse 70% 60% at 50% 60%, #151945 0%, #0d102e 55%, #07091a 100%);
+  border: 3px solid var(--star-cyan);
+  box-shadow:
+    0 0 35px rgba(76, 201, 240, 0.35),
+    inset 0 0 50px rgba(123, 47, 247, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  overflow: hidden;
+  clip-path: polygon(24px 0, calc(100% - 24px) 0, 100% 24px, 100% calc(100% - 24px), calc(100% - 24px) 100%, 24px 100%, 0 calc(100% - 24px), 0 24px);
+}
+
+/* Crater & Orbit Lines */
+.dc-arena-crater {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotateX(60deg);
+  width: 650px;
+  height: 380px;
+  border: 2px dashed rgba(76, 201, 240, 0.25);
+  border-radius: 50%;
+  box-shadow: inset 0 0 40px rgba(76, 201, 240, 0.15), 0 0 30px rgba(247, 37, 133, 0.2);
+  pointer-events: none;
+}
+
+.dc-arena-target {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotateX(60deg);
+  width: 320px;
+  height: 180px;
+  border: 1px solid rgba(255, 209, 102, 0.3);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Dice Container Row */
+.dc-dice-stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 60px;
+  width: 100%;
+  min-height: 280px;
+  perspective: 1400px;
+  z-index: 2;
+}
+
+/* Individual Die Scene */
+.dc-die-scene {
+  --dice-size: 140px;
+  width: var(--dice-size);
+  height: var(--dice-size);
+  perspective: 1200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dc-die-shadow {
+  width: 120px;
+  height: 24px;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, transparent 70%);
+  border-radius: 50%;
+  margin-top: 26px;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* 3D Crystal Cube */
+.dc-cube {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* Cube Faces */
+.dc-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(26, 30, 74, 0.88) 0%, rgba(13, 16, 46, 0.94) 100%);
+  border: 2px solid var(--star-cyan);
+  box-shadow:
+    inset 0 0 25px rgba(76, 201, 240, 0.4),
+    0 0 15px rgba(76, 201, 240, 0.25);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  user-select: none;
+}
+
+/* Crystal dice glow accents */
+.dc-face-cyan {
+  border-color: var(--star-cyan);
+  box-shadow: inset 0 0 25px rgba(76, 201, 240, 0.45);
+}
+.dc-face-pink {
+  border-color: var(--nebula-pink);
+  box-shadow: inset 0 0 25px rgba(247, 37, 133, 0.45);
+}
+.dc-face-gold {
+  border-color: var(--gold-jackpot);
+  box-shadow: inset 0 0 25px rgba(255, 209, 102, 0.45);
+}
+
+/* 3D Face Positions */
+.dc-face-front  { transform: rotateY(0deg) translateZ(calc(var(--dice-size) / 2)); }
+.dc-face-back   { transform: rotateY(180deg) translateZ(calc(var(--dice-size) / 2)); }
+.dc-face-right  { transform: rotateY(90deg) translateZ(calc(var(--dice-size) / 2)); }
+.dc-face-left   { transform: rotateY(-90deg) translateZ(calc(var(--dice-size) / 2)); }
+.dc-face-top    { transform: rotateX(90deg) translateZ(calc(var(--dice-size) / 2)); }
+.dc-face-bottom { transform: rotateX(-90deg) translateZ(calc(var(--dice-size) / 2)); }
+
+/* Pips Container */
+.dc-pips {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+}
+
+.dc-pips-1 { display: flex; align-items: center; justify-content: center; }
+.dc-pips-2 { display: flex; justify-content: space-between; align-items: stretch; }
+.dc-pips-2 .dc-pip:last-child { align-self: flex-end; }
+.dc-pips-3 { display: flex; justify-content: space-between; }
+.dc-pips-3 .dc-pip:nth-child(2) { align-self: center; }
+.dc-pips-3 .dc-pip:nth-child(3) { align-self: flex-end; }
+.dc-pips-4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  align-items: center;
+  justify-items: center;
+}
+.dc-pips-5 {
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  align-items: center;
+  justify-items: center;
+}
+.dc-pips-5 .dc-pip:nth-child(1) { grid-area: 1 / 1; }
+.dc-pips-5 .dc-pip:nth-child(2) { grid-area: 1 / 3; }
+.dc-pips-5 .dc-pip:nth-child(3) { grid-area: 2 / 2; }
+.dc-pips-5 .dc-pip:nth-child(4) { grid-area: 3 / 1; }
+.dc-pips-5 .dc-pip:nth-child(5) { grid-area: 3 / 3; }
+.dc-pips-6 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  align-items: center;
+  justify-items: center;
+}
+
+.dc-pip {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff 0%, var(--star-cyan) 60%, #1a1e4a 100%);
+  box-shadow: 0 0 10px var(--star-cyan);
+}
+
+.dc-pip-gold {
+  background: radial-gradient(circle at 35% 35%, #fff 0%, var(--gold-jackpot) 60%, #4a3810 100%);
+  box-shadow: 0 0 10px var(--gold-jackpot);
+}
+
+.dc-pip-pink {
+  background: radial-gradient(circle at 35% 35%, #fff 0%, var(--nebula-pink) 60%, #4a0d2a 100%);
+  box-shadow: 0 0 10px var(--nebula-pink);
+}
+
+/* Face Content (Text / Custom items) */
+.dc-face-header {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-jackpot);
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.dc-face-main {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  color: #fff;
+  line-height: 1.25;
+  text-shadow: 0 0 12px var(--star-cyan);
+  word-break: break-word;
+  padding: 4px;
+}
+
+.dc-face-footer {
+  font-family: var(--font-numbers);
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+/* Controls */
+.dc-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  z-index: 2;
+  margin-top: 10px;
+}
+
+.dc-impact-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 209, 102, 0.4) 0%, transparent 70%);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 3;
+}
+
+@media (max-width: 768px) {
+  .dc-die-scene {
+    --dice-size: 105px;
+  }
+  .dc-dice-stage {
+    gap: 30px;
+  }
+  .dc-face-main {
+    font-size: 12px;
+  }
+}

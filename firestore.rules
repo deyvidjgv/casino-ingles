@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isTeacher(courseId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
+    }
+
+    function isMember(courseId) {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/courses/$(courseId)/members/$(request.auth.uid)) ||
+        isTeacher(courseId)
+      );
+    }
+
+    // Users collection
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Join codes for courses (read public to join, teacher writes)
+    match /joinCodes/{code} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (
+        request.resource.data.teacherId == request.auth.uid ||
+        resource.data.teacherId == request.auth.uid
+      );
+    }
+
+    // Courses collection
+    match /courses/{courseId} {
+      allow read: if isMember(courseId);
+      allow create: if isSignedIn() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if isTeacher(courseId);
+
+      // Members subcollection
+      match /members/{memberId} {
+        allow read: if isMember(courseId);
+        // Teacher has full control over members
+        allow create, delete: if isTeacher(courseId) ||
+          (isSignedIn() && memberId == request.auth.uid && request.resource.data.points == 0);
+        // Student can update their own name/avatar, but NEVER modify points
+        allow update: if isTeacher(courseId) || (
+          isSignedIn() &&
+          memberId == request.auth.uid &&
+          request.resource.data.points == resource.data.points
+        );
+      }
+
+      // Topics & Questions
+      match /topics/{topicId} {
+        allow read: if isMember(courseId);
+        allow write: if isTeacher(courseId);
+      }
+
+      match /questions/{questionId} {
+        allow read: if isMember(courseId);
+        allow write: if isTeacher(courseId);
+      }
+
+      // Islands configuration
+      match /islands/{islandId} {
+        allow read: if isMember(courseId);
+        allow write: if isTeacher(courseId);
+      }
+
+      // Live game sessions
+      match /sessions/{sessionId} {
+        allow read: if isMember(courseId);
+        allow write: if isTeacher(courseId);
+      }
+
+      // Game history & logs
+      match /history/{historyId} {
+        allow read: if isMember(courseId);
+        allow write: if isTeacher(courseId);
+      }
+
+      // Account recovery requests
+      match /recoveryRequests/{requestId} {
+        allow read: if isTeacher(courseId) || (isSignedIn() && resource.data.guestUid == request.auth.uid);
+        allow create: if isSignedIn() && request.resource.data.guestUid == request.auth.uid;
+        allow update, delete: if isTeacher(courseId);
+      }
+    }
+  }
+}

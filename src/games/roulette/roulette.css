@@ -1,0 +1,131 @@
+/* Lunar Roulette: gold rim, pink / midnight pockets, lunar cone with a crescent hub,
+   white ball with a cyan glow (same look as the island art). */
+
+.rl-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, 4vw, 56px);
+  width: 100%;
+  height: 100%;
+}
+
+.rl-wheel-wrap {
+  position: relative;
+  width: min(76vh, 58vw);
+  aspect-ratio: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 28px rgba(247, 37, 133, 0.35)) drop-shadow(0 18px 40px rgba(0, 0, 0, 0.55));
+}
+
+.rl-wheel {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.rl-num {
+  fill: #fff3c4;
+  font-family: var(--font-numbers);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.rl-name {
+  fill: var(--text-main);
+  font-family: var(--font-body);
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: rgba(11, 13, 42, 0.55);
+  stroke-width: 3px;
+  animation: rl-seat 0.5s ease-out both;
+}
+
+@keyframes rl-seat {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rl-pocket.is-free .rl-num {
+  fill-opacity: 0.55;
+}
+
+.rl-win-glow {
+  fill: #ffffff;
+  fill-opacity: 0.18;
+  stroke: #fff3c4;
+  stroke-width: 6;
+  animation: rl-win 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes rl-win {
+  from { fill-opacity: 0.08; }
+  to { fill-opacity: 0.4; }
+}
+
+.rl-crescent {
+  filter: drop-shadow(0 0 14px #e9eaff);
+}
+
+.rl-pointer {
+  position: absolute;
+  left: 50%;
+  top: -10px;
+  width: 26px;
+  height: 30px;
+  transform: translateX(-50%);
+  background: var(--gold-jackpot);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  filter: drop-shadow(0 0 8px var(--gold-jackpot));
+}
+
+.rl-side {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  width: min(340px, 34vw);
+}
+
+.rl-spin {
+  width: 100%;
+}
+
+.rl-odds {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-soft);
+}
+
+.rl-log {
+  margin: 0;
+  padding: 14px 16px 14px 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(16, 19, 54, 0.7);
+  border-left: 2px solid var(--island-color);
+  font-size: 14px;
+}
+
+.rl-log .is-saved {
+  color: var(--text-soft);
+  font-style: italic;
+}
+
+@media (max-width: 900px) {
+  .rl-play {
+    flex-direction: column;
+    height: auto;
+  }
+  .rl-wheel-wrap { width: min(92vw, 62vh); }
+  .rl-side { width: min(420px, 100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rl-win-glow { animation: none; fill-opacity: 0.3; }
+  .rl-name { animation: none; }
+}

@@ -1,0 +1,356 @@
+/* Shared game screen styles. Every game inherits --island-color / --island-accent from its island. */
+
+.gm-shell {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-align: left;
+  color: var(--text-main);
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 62%, color-mix(in srgb, var(--island-color) 20%, transparent) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 15% 10%, color-mix(in srgb, var(--island-accent) 14%, transparent) 0%, transparent 70%),
+    var(--space-deep);
+}
+
+.gm-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.gm-backdrop img {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  height: 125%;
+  transform: translate(-50%, -50%);
+  opacity: 0.16;
+  filter: blur(22px) saturate(1.3);
+}
+
+/* ---------- header ---------- */
+.gm-header {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 22px;
+}
+
+.gm-kicker {
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--island-color);
+}
+
+.gm-title {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 2.2vw, 30px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 22px color-mix(in srgb, var(--island-color) 70%, transparent);
+}
+
+.gm-status {
+  justify-self: center;
+  text-align: center;
+  font-size: 15px;
+  color: var(--text-soft);
+}
+
+.gm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.gm-btn {
+  min-height: 40px;
+  padding: 0 16px;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.gm-btn-primary {
+  --edge: var(--gold-jackpot);
+  --fill: linear-gradient(135deg, var(--nebula-purple), var(--nebula-pink));
+  min-height: 52px;
+  padding: 0 34px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.14em;
+}
+
+button.gm-btn-primary:hover,
+button.gm-btn-primary:focus-visible {
+  --edge: var(--text-main);
+  --fill: linear-gradient(135deg, #8d45ff, #ff3d95);
+}
+
+/* ---------- stage ---------- */
+.gm-stage {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 22px 22px;
+  overflow: auto;
+}
+
+.gm-muted {
+  color: var(--text-soft);
+}
+
+/* ---------- setup panel ---------- */
+.gm-panel {
+  --cut: 18px;
+  --fill: rgba(16, 19, 54, 0.92);
+  width: min(620px, 100%);
+  max-height: 100%;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow: auto;
+}
+
+.gm-panel-wide {
+  width: min(820px, 100%);
+}
+
+.gm-panel-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  color: var(--island-color);
+}
+
+.gm-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.gm-panel-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.gm-field-label {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.gm-field-hint {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.gm-seg {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.gm-seg-opt {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 14px;
+  text-align: left;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.gm-seg-opt.is-on {
+  --edge: var(--island-color);
+  --fill: color-mix(in srgb, var(--island-color) 24%, #1a1e4a);
+}
+
+.gm-seg-label {
+  font-weight: 600;
+}
+
+.gm-seg-hint {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.gm-stepper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gm-step-btn {
+  width: 42px;
+  height: 42px;
+  color: var(--text-main);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.gm-step-value {
+  min-width: 3ch;
+  font-family: var(--font-numbers);
+  font-size: 24px;
+  text-align: center;
+  color: var(--gold-jackpot);
+}
+
+.gm-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(76, 201, 240, 0.3);
+  border-radius: 0;
+  background: rgba(11, 13, 42, 0.7);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 15px;
+  resize: vertical;
+}
+
+.gm-input:focus {
+  outline: none;
+  border-color: var(--gold-jackpot);
+}
+
+/* ---------- result overlay ---------- */
+.gm-result {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(11, 13, 42, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.gm-starburst {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.gm-result-card {
+  --cut: 24px;
+  --edge: var(--island-color);
+  --fill: rgba(16, 19, 54, 0.95);
+  max-width: min(960px, 100%);
+  padding: 30px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.gm-result-kicker {
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--island-color);
+}
+
+.gm-result-text {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 4.2vw, 58px);
+  font-weight: 700;
+  line-height: 1.18;
+  text-wrap: balance;
+  text-shadow: 0 0 26px color-mix(in srgb, var(--island-color) 75%, transparent);
+}
+
+.gm-result-saved .gm-result-card {
+  --edge: var(--star-cyan);
+}
+
+.gm-result-saved .gm-result-text {
+  text-shadow: 0 0 26px rgba(76, 201, 240, 0.7);
+}
+
+.gm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.gm-chip {
+  padding: 4px 12px;
+  border: 1px solid currentColor;
+  font-family: var(--font-numbers);
+  font-size: 16px;
+  color: var(--gold-jackpot);
+}
+
+.gm-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* ---------- summary + notices ---------- */
+.gm-summary {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.gm-summary .is-saved {
+  color: var(--text-soft);
+  font-style: italic;
+}
+
+.gm-notice {
+  --edge: var(--gold-jackpot);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 12px 20px;
+  font-size: 16px;
+}
+
+@media (max-width: 760px) {
+  .gm-header {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+  .gm-status { justify-self: start; }
+  .gm-actions { justify-content: flex-start; }
+}

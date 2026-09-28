@@ -1,0 +1,442 @@
+.gx-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--space-deep) 0%, var(--space-deep) 25%, var(--space-mid) 100%);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+  color: var(--text-main);
+  font-family: var(--font-body);
+}
+
+.gx-layer {
+  position: absolute;
+  inset: 0;
+}
+
+canvas.gx-layer {
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.gx-grain {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* ---------- islands ---------- */
+.gx-islands {
+  pointer-events: none;
+}
+
+.gx-island-wrap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform: translate(-9999px, -9999px);
+  will-change: transform, opacity;
+}
+
+.gx-island {
+  position: absolute;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  will-change: transform;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gx-island img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.gx-island:focus-visible img {
+  filter: drop-shadow(0 0 10px var(--island-color));
+}
+
+/* dark disc behind see-through parts of the art (the black hole's core) */
+.gx-island-core {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--space-deep) 55%, rgba(11, 13, 42, 0.85) 80%, rgba(11, 13, 42, 0) 100%);
+}
+
+.gx-island-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: max-content;
+  max-width: 240px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  transform-origin: 50% 0;
+  color: var(--text-main);
+  text-shadow: 0 0 10px var(--island-color), 0 0 26px var(--island-color), 0 1px 3px var(--space-deep);
+  pointer-events: none;
+}
+
+.gx-fx {
+  z-index: 1;
+}
+
+/* ---------- HUD ---------- */
+.gx-hud {
+  z-index: 2;
+  pointer-events: none;
+}
+
+.gx-glass {
+  pointer-events: auto;
+  color: var(--star-cyan);
+  font-family: inherit;
+}
+
+.gx-glass button,
+button.gx-glass {
+  cursor: pointer;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.gx-hint {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  transform: translateX(-50%);
+  width: min(720px, calc(100% - 200px));
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-wrap: pretty;
+  opacity: 0.8;
+  text-shadow: 0 1px 3px var(--space-deep);
+}
+
+.gx-top-actions {
+  position: absolute;
+  right: 20px;
+  top: 14px;
+  display: flex;
+  gap: 8px;
+}
+
+.gx-chip {
+  min-height: 36px;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.gx-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.gx-arrow-prev { left: 20px; }
+.gx-arrow-next { right: 20px; }
+
+.gx-arrow-btn {
+  --cut: 14px;
+  width: 56px;
+  height: 56px;
+  font-size: 34px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 5px;
+}
+
+.gx-arrow-label {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  max-width: 110px;
+  text-align: center;
+  text-shadow: 0 1px 3px var(--space-deep), 0 0 10px var(--space-deep);
+}
+
+
+.gx-minimap {
+  --cut: 14px;
+  position: absolute;
+  left: 20px;
+  bottom: 20px;
+  padding: 8px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gx-minimap-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 32px;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--star-cyan);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.gx-minimap-toggle:hover {
+  text-shadow: 0 0 12px rgba(255, 209, 102, 0.8);
+}
+
+.gx-minimap-body {
+  position: relative;
+  width: 220px;
+  height: 76px;
+  background: rgba(11, 13, 42, 0.65);
+  overflow: hidden;
+}
+
+.gx-minimap-body svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.gx-minimap-body polyline {
+  fill: none;
+  stroke: var(--star-cyan);
+  stroke-opacity: 0.4;
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.gx-minimap-view {
+  position: absolute;
+  border: 1.5px solid var(--star-cyan);
+  background: rgba(76, 201, 240, 0.08);
+  box-shadow: 0 0 10px rgba(76, 201, 240, 0.4);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.gx-minimap-dot {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gx-minimap-dot span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--island-color) 50%, var(--island-accent) 50%);
+  box-shadow: 0 0 8px var(--island-color);
+  transition: transform 0.2s;
+}
+
+.gx-minimap-dot:hover span {
+  transform: scale(1.4);
+}
+
+.gx-zoom {
+  --cut: 14px;
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+}
+
+.gx-zoom button {
+  width: 52px;
+  height: 48px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.2s, text-shadow 0.2s;
+  color: var(--star-cyan);
+  font-family: inherit;
+  font-size: 26px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gx-zoom button:hover {
+  background: rgba(255, 209, 102, 0.12);
+  color: var(--gold-jackpot);
+  text-shadow: 0 0 12px rgba(255, 209, 102, 0.7);
+}
+
+.gx-zoom hr {
+  height: 1px;
+  border: 0;
+  background: rgba(76, 201, 240, 0.2);
+  margin: 2px 6px;
+}
+
+.gx-zoom .gx-zoom-all {
+  height: auto;
+  min-height: 48px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1.25;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* ---------- loader, fade, debug, entered panel ---------- */
+.gx-loader {
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: none;
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.gx-loader-dots {
+  display: flex;
+  gap: 10px;
+}
+
+.gx-loader-dots span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  animation: gx-pulse 1.2s ease-in-out infinite;
+}
+
+.gx-loader-dots span:nth-child(1) { background: var(--star-cyan); box-shadow: 0 0 12px var(--star-cyan); }
+.gx-loader-dots span:nth-child(2) { background: var(--gold-jackpot); box-shadow: 0 0 12px var(--gold-jackpot); animation-delay: 0.2s; }
+.gx-loader-dots span:nth-child(3) { background: var(--nebula-pink); box-shadow: 0 0 12px var(--nebula-pink); animation-delay: 0.4s; }
+
+@keyframes gx-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+.gx-fade {
+  z-index: 3;
+  background: var(--space-deep);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gx-debug {
+  position: absolute;
+  z-index: 6;
+  left: 20px;
+  top: 56px;
+  display: none;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(11, 13, 42, 0.88);
+  border: 1px solid rgba(76, 201, 240, 0.4);
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre;
+  pointer-events: none;
+}
+
+.gx-panel {
+  z-index: 4;
+  touch-action: auto;
+  user-select: text;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+  cursor: default;
+}
+
+.gx-panel-kicker {
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--island-color);
+}
+
+.gx-panel-title {
+  font-family: var(--font-display);
+  font-size: clamp(34px, 6vw, 68px);
+  font-weight: 700;
+  text-shadow: 0 0 30px var(--island-color);
+}
+
+.gx-panel-note {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.gx-panel-back {
+  margin-top: 14px;
+  padding: 14px 26px;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+
+@media (max-width: 640px) {
+  .gx-hint { display: none; }
+  .gx-arrow-label { display: none; }
+  .gx-minimap-body { width: 160px; height: 56px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gx-loader-dots span { animation: none; opacity: 0.8; }
+}

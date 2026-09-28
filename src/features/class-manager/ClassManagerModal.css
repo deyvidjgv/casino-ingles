@@ -1,0 +1,204 @@
+.rc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(11, 13, 42, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.rc-cm-card {
+  --cut: 16px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  border: 1px solid rgba(76, 201, 240, 0.4);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(76, 201, 240, 0.2);
+}
+
+.rc-cm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.rc-cm-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rc-cm-icon {
+  font-size: 22px;
+}
+
+.rc-cm-title h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  color: var(--star-cyan);
+}
+
+.rc-cm-close {
+  --cut: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--text-soft);
+}
+
+.rc-cm-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.rc-cm-tab {
+  --cut: 8px;
+  flex: 1;
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-soft);
+}
+
+.rc-cm-tab.is-active {
+  --edge: rgba(255, 209, 102, 0.9);
+  --fill: rgba(40, 36, 92, 0.95);
+  color: var(--gold-jackpot);
+}
+
+.rc-cm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.rc-cm-batch-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(11, 13, 42, 0.5);
+  padding: 12px;
+  border-radius: 4px;
+}
+
+.rc-cm-batch-label {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.rc-cm-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.rc-cm-textarea {
+  flex: 1;
+  background: rgba(26, 30, 74, 0.6);
+  border: 1px solid rgba(76, 201, 240, 0.3);
+  color: var(--text-main);
+  padding: 8px 10px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  resize: vertical;
+  outline: none;
+}
+
+.rc-cm-textarea:focus {
+  border-color: var(--star-cyan);
+}
+
+.rc-cm-add-btn {
+  --cut: 8px;
+  padding: 0 16px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold-jackpot);
+  cursor: pointer;
+}
+
+.rc-cm-items-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+}
+
+.rc-cm-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(11, 13, 42, 0.6);
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.rc-cm-active-toggle {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid var(--text-soft);
+  background: transparent;
+  color: var(--text-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.rc-cm-active-toggle.is-active {
+  border-color: var(--success);
+  color: var(--success);
+  background: rgba(6, 214, 160, 0.15);
+}
+
+.rc-cm-item-name {
+  flex: 1;
+  font-size: 14px;
+}
+
+.rc-cm-item-name.is-faded {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.rc-cm-item-pts {
+  font-family: var(--font-numbers);
+  font-size: 13px;
+  color: var(--gold-jackpot);
+}
+
+.rc-cm-del-btn {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 14px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.rc-cm-del-btn:hover {
+  opacity: 1;
+}

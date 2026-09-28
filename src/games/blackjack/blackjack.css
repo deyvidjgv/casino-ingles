@@ -1,0 +1,375 @@
+/* Card Comet — Cosmic Blackjack Table Styles */
+
+.bk-play {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1100px;
+  gap: 16px;
+  perspective: 1200px;
+}
+
+/* Felt table */
+.bk-table {
+  position: relative;
+  width: 100%;
+  min-height: 480px;
+  background: radial-gradient(ellipse 80% 65% at 50% 50%, #301056 0%, #1c0834 65%, #0e051c 100%);
+  border: 3px solid var(--star-cyan);
+  box-shadow:
+    0 0 35px rgba(76, 201, 240, 0.4),
+    inset 0 0 60px rgba(123, 47, 247, 0.5),
+    inset 0 0 20px rgba(76, 201, 240, 0.3);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  clip-path: polygon(24px 0, calc(100% - 24px) 0, 100% 24px, 100% calc(100% - 24px), calc(100% - 24px) 100%, 24px 100%, 0 calc(100% - 24px), 0 24px);
+}
+
+/* Felt decorative markings */
+.bk-table::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border: 1px dashed rgba(76, 201, 240, 0.25);
+  pointer-events: none;
+  clip-path: polygon(20px 0, calc(100% - 20px) 0, 100% 20px, 100% calc(100% - 20px), calc(100% - 20px) 100%, 20px 100%, 0 calc(100% - 20px), 0 20px);
+}
+
+.bk-felt-arc {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 75%;
+  height: 280px;
+  border-top: 2px solid rgba(255, 209, 102, 0.25);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  pointer-events: none;
+}
+
+.bk-felt-title {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.35em;
+  color: rgba(255, 209, 102, 0.35);
+  text-transform: uppercase;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Dealer Area */
+.bk-dealer-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 2;
+}
+
+.bk-area-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bk-area-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--star-cyan);
+}
+
+.bk-badge-score {
+  background: rgba(26, 30, 74, 0.85);
+  border: 1px solid var(--star-cyan);
+  padding: 2px 10px;
+  font-family: var(--font-numbers);
+  font-size: 14px;
+  color: var(--gold-jackpot);
+}
+
+.bk-badge-bust {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* Hands layout */
+.bk-hand {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  min-height: 140px;
+  perspective: 1000px;
+}
+
+/* Players Area (Split for 2 players) */
+.bk-players-area {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  width: 100%;
+  z-index: 2;
+  margin-top: 10px;
+}
+
+.bk-player-spot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(16, 19, 54, 0.45);
+  border: 1px solid rgba(76, 201, 240, 0.2);
+  transition: all 0.3s ease;
+}
+
+.bk-player-spot.is-active {
+  border-color: var(--gold-jackpot);
+  background: rgba(48, 16, 86, 0.6);
+  box-shadow: 0 0 20px rgba(255, 209, 102, 0.3);
+}
+
+/* Hologram Card */
+.bk-card-wrap {
+  width: 100px;
+  height: 145px;
+  perspective: 800px;
+  cursor: pointer;
+  position: relative;
+}
+
+.bk-card-3d {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.2, 0.85, 0.4, 1.2);
+}
+
+.bk-card-wrap.is-flipped .bk-card-3d {
+  transform: rotateY(180deg);
+}
+
+.bk-card-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+}
+
+/* Card Back (Hologram Circuit) */
+.bk-card-back {
+  background: linear-gradient(135deg, #1b0a38 0%, #0d0620 100%);
+  border: 2px solid var(--star-cyan);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--star-cyan);
+  box-shadow: inset 0 0 15px rgba(76, 201, 240, 0.4);
+}
+
+.bk-card-back-pattern {
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(76, 201, 240, 0.3);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 50%, rgba(123, 47, 247, 0.3) 0%, transparent 80%);
+}
+
+.bk-card-logo {
+  font-size: 28px;
+  filter: drop-shadow(0 0 8px var(--star-cyan));
+  animation: bk-pulse 2s infinite alternate;
+}
+
+@keyframes bk-pulse {
+  from { transform: scale(0.95); opacity: 0.8; }
+  to { transform: scale(1.05); opacity: 1; filter: drop-shadow(0 0 12px var(--gold-jackpot)); }
+}
+
+/* Card Front (Cosmic Face) */
+.bk-card-front {
+  transform: rotateY(180deg);
+  background: linear-gradient(145deg, #161a42 0%, #0d0e28 100%);
+  border: 2px solid rgba(76, 201, 240, 0.6);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #fff;
+}
+
+.bk-card-front.is-red {
+  color: var(--nebula-pink);
+  border-color: rgba(247, 37, 133, 0.7);
+}
+
+.bk-card-front.is-black {
+  color: var(--star-cyan);
+  border-color: rgba(76, 201, 240, 0.7);
+}
+
+.bk-card-corner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-numbers);
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.bk-card-corner.bottom {
+  transform: rotate(180deg);
+}
+
+.bk-card-center-suit {
+  align-self: center;
+  font-size: 34px;
+  text-shadow: 0 0 12px currentColor;
+}
+
+/* Card Draw Mode: Large Card Visual */
+.bk-draw-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px;
+  width: 100%;
+  margin: 20px 0;
+}
+
+.bk-draw-card-wrap {
+  width: 170px;
+  height: 240px;
+  perspective: 1000px;
+}
+
+.bk-draw-card-wrap .bk-card-front {
+  padding: 14px;
+  justify-content: space-between;
+  text-align: center;
+  background: radial-gradient(circle at 50% 20%, rgba(123, 47, 247, 0.4) 0%, #101336 90%);
+}
+
+.bk-draw-kind-tag {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gold-jackpot);
+}
+
+.bk-draw-card-content {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: auto 0;
+  color: var(--text-main);
+  text-shadow: 0 0 10px rgba(76, 201, 240, 0.6);
+  word-break: break-word;
+}
+
+/* Question Banner for Soft Rule Hit */
+.bk-question-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(580px, 94%);
+  background: rgba(16, 19, 54, 0.96);
+  border: 2px solid var(--gold-jackpot);
+  box-shadow: 0 0 40px rgba(255, 209, 102, 0.4);
+  padding: 22px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: center;
+}
+
+.bk-question-kicker {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-jackpot);
+}
+
+.bk-question-text {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.35;
+}
+
+.bk-question-hint {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.bk-question-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.bk-btn-correct {
+  --edge: var(--success);
+  --fill: rgba(6, 214, 160, 0.25);
+  color: #fff;
+  min-width: 140px;
+}
+
+.bk-btn-wrong {
+  --edge: var(--danger);
+  --fill: rgba(239, 71, 111, 0.25);
+  color: #fff;
+  min-width: 140px;
+}
+
+/* Action Bars */
+.bk-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  z-index: 2;
+}
+
+@media (max-width: 768px) {
+  .bk-players-area {
+    grid-template-columns: 1fr;
+  }
+  .bk-card-wrap {
+    width: 75px;
+    height: 110px;
+  }
+  .bk-draw-card-wrap {
+    width: 130px;
+    height: 180px;
+  }
+}
