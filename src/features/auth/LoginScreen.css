@@ -1,0 +1,312 @@
+/* Landing + sign-in. Deliberately canvas-free: the galaxy engine is heavy, and this screen
+   paints before any of it loads. */
+.lg-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background: radial-gradient(120% 90% at 50% 0%, var(--space-mid) 0%, var(--space-deep) 62%);
+  color: var(--text-main);
+  font-family: var(--font-body);
+}
+
+/* one cheap composited layer instead of a starfield */
+.lg-aurora {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 30% at 22% 28%, rgba(123, 47, 247, 0.32), transparent 70%),
+    radial-gradient(34% 28% at 78% 66%, rgba(247, 37, 133, 0.22), transparent 70%),
+    radial-gradient(30% 26% at 62% 18%, rgba(76, 201, 240, 0.18), transparent 70%);
+  filter: blur(40px);
+  animation: lgDrift 26s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes lgDrift {
+  from { transform: translate3d(-2%, -1%, 0) scale(1.25); }
+  to { transform: translate3d(2%, 2%, 0) scale(1.35); }
+}
+
+.lg-lang {
+  --cut: 8px;
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 2;
+  min-height: 34px;
+  padding: 0 14px;
+  color: var(--star-cyan);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.lg-stage {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  animation: lgRise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes lgRise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+.lg-brand {
+  text-align: center;
+}
+
+.lg-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(28px, 6vw, 40px);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, var(--star-cyan), var(--text-main) 55%, var(--gold-jackpot));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lg-tagline {
+  margin: 10px 0 0;
+  color: var(--text-soft);
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.lg-card {
+  --cut: 16px;
+  --edge: rgba(76, 201, 240, 0.34);
+  --fill: rgba(16, 19, 56, 0.92);
+  padding: 30px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lg-card-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--star-cyan);
+}
+
+.lg-card-note {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ---------- role picker ---------- */
+.lg-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.lg-role {
+  --cut: 10px;
+  --edge: rgba(76, 201, 240, 0.28);
+  --fill: rgba(26, 30, 74, 0.72);
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: transform 0.16s ease;
+}
+
+.lg-role:hover {
+  transform: translateX(3px);
+}
+
+.lg-role-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lg-role-desc {
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* ---------- forms ---------- */
+.lg-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lg-card-head .lg-card-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lg-back {
+  --cut: 7px;
+  --edge: rgba(76, 201, 240, 0.3);
+  --fill: rgba(26, 30, 74, 0.8);
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* Drawn, not typed: the display fonts have no glyph for the angle-quote characters. */
+.lg-back::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-left: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.lg-back:hover {
+  color: var(--star-cyan);
+}
+
+.lg-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.lg-field input {
+  padding: 11px 13px;
+  border: 1px solid rgba(76, 201, 240, 0.24);
+  border-radius: 3px;
+  background: rgba(8, 10, 32, 0.75);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  font-size: 15px;
+  letter-spacing: normal;
+  text-transform: none;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.lg-field input::placeholder {
+  color: rgba(165, 169, 214, 0.45);
+}
+
+.lg-field input:focus {
+  border-color: var(--star-cyan);
+  box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.14);
+}
+
+.lg-field-error {
+  color: var(--danger);
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.lg-submit {
+  --cut: 10px;
+  --edge: rgba(76, 201, 240, 0.85);
+  --fill: rgba(30, 64, 128, 0.92);
+  min-height: 46px;
+  padding: 0 18px;
+  color: var(--text-main);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.lg-switch {
+  align-self: center;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: var(--star-cyan);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.lg-switch:hover {
+  text-decoration: underline;
+}
+
+.lg-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--danger);
+  background: rgba(239, 71, 111, 0.12);
+  color: #ffb3c4;
+  font-size: 12.5px;
+  line-height: 1.5;
+  animation: lgShake 0.35s;
+}
+
+@keyframes lgShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-aurora { animation: none; }
+  .lg-stage { animation: none; }
+  .lg-error { animation: none; }
+  .lg-role:hover { transform: none; }
+}
+
+/* The class code is a 5-digit PIN read off a projector. */
+.lg-code-input {
+  font-family: var(--font-numbers);
+  font-size: 30px !important;
+  letter-spacing: 0.42em !important;
+  text-align: center;
+  text-indent: 0.42em;
+}

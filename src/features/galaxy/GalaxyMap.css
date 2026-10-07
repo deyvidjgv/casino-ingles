@@ -98,6 +98,25 @@ canvas.gx-layer {
   pointer-events: none;
 }
 
+/* Shown under the island the camera has settled on: the next click enters it. */
+.gx-island-cta {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--island-color);
+  text-shadow: 0 1px 3px var(--space-deep);
+  animation: gxCtaIn 0.3s ease-out both;
+}
+
+@keyframes gxCtaIn {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: none; }
+}
+
 .gx-fx {
   z-index: 1;
 }
@@ -120,35 +139,28 @@ button.gx-glass {
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 
+/* Onboarding copy, auto-dismissed after a few seconds. Parked below the header band so it
+   never shares pixels with it; hidden outright once the header is narrow enough to wrap. */
 .gx-hint {
   position: absolute;
   left: 50%;
-  top: 18px;
+  top: var(--hud-top);
   transform: translateX(-50%);
-  width: min(720px, calc(100% - 200px));
-  font-size: 13px;
-  letter-spacing: 0.06em;
+  max-width: min(660px, calc(100% - 2 * var(--hud-rail-right)));
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: rgba(11, 13, 42, 0.62);
+  font-size: 12.5px;
+  letter-spacing: 0.05em;
   text-align: center;
   text-wrap: pretty;
-  opacity: 0.8;
-  text-shadow: 0 1px 3px var(--space-deep);
+  color: var(--text-soft);
+  animation: gxHintIn 0.4s ease-out both;
 }
 
-.gx-top-actions {
-  position: absolute;
-  right: 20px;
-  top: 14px;
-  display: flex;
-  gap: 8px;
-}
-
-.gx-chip {
-  min-height: 36px;
-  padding: 0 16px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+@keyframes gxHintIn {
+  from { opacity: 0; transform: translate(-50%, -6px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 .gx-arrow {
@@ -161,8 +173,8 @@ button.gx-glass {
   gap: 10px;
 }
 
-.gx-arrow-prev { left: 20px; }
-.gx-arrow-next { right: 20px; }
+.gx-arrow-prev { left: var(--hud-gap); }
+.gx-arrow-next { right: var(--hud-gap); }
 
 .gx-arrow-btn {
   --cut: 14px;
@@ -278,8 +290,8 @@ button.gx-glass {
 .gx-zoom {
   --cut: 14px;
   position: absolute;
-  right: 20px;
-  bottom: 20px;
+  right: var(--hud-gap);
+  bottom: var(--hud-gap);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -371,8 +383,8 @@ button.gx-glass {
 .gx-debug {
   position: absolute;
   z-index: 6;
-  left: 20px;
-  top: 56px;
+  left: var(--hud-gap);
+  top: var(--hud-top);
   display: none;
   padding: 10px 12px;
   border-radius: 10px;
@@ -431,12 +443,17 @@ button.gx-glass {
 }
 
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   .gx-hint { display: none; }
+}
+
+@media (max-width: 640px) {
   .gx-arrow-label { display: none; }
   .gx-minimap-body { width: 160px; height: 56px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .gx-loader-dots span { animation: none; opacity: 0.8; }
+  .gx-hint { animation: none; }
+  .gx-island-cta { animation: none; }
 }

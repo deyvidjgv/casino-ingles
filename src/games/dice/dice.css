@@ -15,7 +15,7 @@
 .dc-arena {
   position: relative;
   width: 100%;
-  min-height: 480px;
+  min-height: 424px;
   background: radial-gradient(ellipse 70% 60% at 50% 60%, #151945 0%, #0d102e 55%, #07091a 100%);
   border: 3px solid var(--star-cyan);
   box-shadow:
@@ -62,9 +62,9 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 60px;
+  gap: clamp(24px, 5vw, 60px);
   width: 100%;
-  min-height: 280px;
+  min-height: 0;
   perspective: 1400px;
   z-index: 2;
 }
@@ -73,7 +73,6 @@
 .dc-die-scene {
   --dice-size: 140px;
   width: var(--dice-size);
-  height: var(--dice-size);
   perspective: 1200px;
   display: flex;
   flex-direction: column;
@@ -81,18 +80,21 @@
 }
 
 .dc-die-shadow {
-  width: 120px;
-  height: 24px;
+  width: calc(var(--dice-size) * 0.85);
+  height: 22px;
+  flex: 0 0 auto;
   background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.75) 0%, transparent 70%);
   border-radius: 50%;
-  margin-top: 26px;
+  margin-top: 22px;
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
-/* 3D Crystal Cube */
+/* 3D Crystal Cube — must stay exactly --dice-size, or translateZ(--dice-size / 2) on the
+   faces no longer meets at the edges and the cube visibly falls apart. */
 .dc-cube {
-  width: 100%;
-  height: 100%;
+  width: var(--dice-size);
+  height: var(--dice-size);
+  flex: 0 0 auto;
   position: relative;
   transform-style: preserve-3d;
   will-change: transform;
@@ -114,7 +116,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
+  gap: 4px;
+  padding: 10px;
+  overflow: hidden;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   user-select: none;
@@ -146,8 +150,9 @@
 .dc-pips {
   display: grid;
   width: 100%;
-  height: 100%;
-  padding: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 2px;
 }
 
 .dc-pips-1 { display: flex; align-items: center; justify-content: center; }
@@ -210,21 +215,22 @@
 }
 
 .dc-face-main {
+  flex: 0 1 auto;
+  width: 100%;
+  max-height: 42%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   text-align: center;
   color: #fff;
-  line-height: 1.25;
+  line-height: 1.2;
   text-shadow: 0 0 12px var(--star-cyan);
-  word-break: break-word;
-  padding: 4px;
-}
-
-.dc-face-footer {
-  font-family: var(--font-numbers);
-  font-size: 12px;
-  color: var(--text-soft);
+  overflow-wrap: anywhere;
+  padding: 2px;
 }
 
 /* Controls */
@@ -249,6 +255,10 @@
 @media (max-width: 768px) {
   .dc-die-scene {
     --dice-size: 105px;
+  }
+  .dc-pip {
+    width: 13px;
+    height: 13px;
   }
   .dc-dice-stage {
     gap: 30px;

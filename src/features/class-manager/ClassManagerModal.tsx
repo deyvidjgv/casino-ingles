@@ -49,7 +49,6 @@ export function ClassManagerModal({ onClose }: ClassManagerModalProps) {
       <div className="rc-cut rc-cm-card" onClick={e => e.stopPropagation()}>
         <header className="rc-cm-header">
           <div className="rc-cm-title">
-            <span className="rc-cm-icon">📋</span>
             <h2>{lang === 'es' ? 'Configuración de Clase' : 'Class Configuration'}</h2>
           </div>
           <button type="button" className="rc-cut rc-cm-close" onClick={onClose} aria-label="Close">
@@ -63,21 +62,21 @@ export function ClassManagerModal({ onClose }: ClassManagerModalProps) {
             className={`rc-cut rc-cm-tab ${activeTab === 'students' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('students')}
           >
-            <span>👨‍🚀 {lang === 'es' ? 'Estudiantes' : 'Students'} ({students.length})</span>
+            <span>{lang === 'es' ? 'Estudiantes' : 'Students'} ({students.length})</span>
           </button>
           <button
             type="button"
             className={`rc-cut rc-cm-tab ${activeTab === 'topics' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('topics')}
           >
-            <span>💬 {lang === 'es' ? 'Temas' : 'Topics'} ({topics.length})</span>
+            <span>{lang === 'es' ? 'Temas' : 'Topics'} ({topics.length})</span>
           </button>
           <button
             type="button"
             className={`rc-cut rc-cm-tab ${activeTab === 'questions' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('questions')}
           >
-            <span>❓ {lang === 'es' ? 'Preguntas' : 'Questions'} ({questions.length})</span>
+            <span>{lang === 'es' ? 'Preguntas' : 'Questions'} ({questions.length})</span>
           </button>
         </div>
 
@@ -120,7 +119,9 @@ export function ClassManagerModal({ onClose }: ClassManagerModalProps) {
                     type="button"
                     className={`rc-cm-active-toggle ${st.active ? 'is-active' : ''}`}
                     onClick={() => toggleStudentActive(st.id)}
-                    title={st.active ? 'Marcar ausente' : 'Marcar presente'}
+                    title={lang === 'es'
+                      ? (st.active ? 'Marcar ausente' : 'Marcar presente')
+                      : (st.active ? 'Mark absent' : 'Mark present')}
                   >
                     {st.active ? '✓' : '—'}
                   </button>
@@ -130,9 +131,9 @@ export function ClassManagerModal({ onClose }: ClassManagerModalProps) {
                     type="button"
                     className="rc-cm-del-btn"
                     onClick={() => removeStudent(st.id)}
-                    title="Eliminar"
+                    title={lang === 'es' ? 'Eliminar' : 'Remove'}
                   >
-                    🗑
+                    {lang === 'es' ? 'Quitar' : 'Remove'}
                   </button>
                 </div>
               ))
@@ -146,9 +147,9 @@ export function ClassManagerModal({ onClose }: ClassManagerModalProps) {
                     type="button"
                     className="rc-cm-del-btn"
                     onClick={() => removeTopic(tp.id)}
-                    title="Eliminar"
+                    title={lang === 'es' ? 'Eliminar' : 'Remove'}
                   >
-                    🗑
+                    {lang === 'es' ? 'Quitar' : 'Remove'}
                   </button>
                 </div>
               ))
@@ -162,9 +163,9 @@ export function ClassManagerModal({ onClose }: ClassManagerModalProps) {
                     type="button"
                     className="rc-cm-del-btn"
                     onClick={() => removeQuestion(q.id)}
-                    title="Eliminar"
+                    title={lang === 'es' ? 'Eliminar' : 'Remove'}
                   >
-                    🗑
+                    {lang === 'es' ? 'Quitar' : 'Remove'}
                   </button>
                 </div>
               ))

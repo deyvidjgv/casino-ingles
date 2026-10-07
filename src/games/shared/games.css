@@ -100,16 +100,151 @@ button.gm-btn-primary:focus-visible {
 }
 
 /* ---------- stage ---------- */
-.gm-stage {
+.gm-body {
   position: relative;
   z-index: 1;
   flex: 1;
   min-height: 0;
   display: flex;
+  align-items: stretch;
+  gap: 16px;
+  padding: 8px 22px 22px;
+}
+
+.gm-stage {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 22px 22px;
   overflow: auto;
+}
+
+/* ---------- round log ---------- */
+.gm-log {
+  --cut: 12px;
+  --edge: rgba(76, 201, 240, 0.25);
+  --fill: rgba(11, 13, 42, 0.8);
+  position: relative;
+  flex: 0 0 258px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 12px;
+  background: var(--edge);
+  border-radius: 0;
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.gm-log::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  background: var(--fill);
+  clip-path: polygon(calc(var(--cut) - 0.4px) 0, 100% 0, 100% calc(100% - var(--cut) + 0.4px), calc(100% - var(--cut) + 0.4px) 100%, 0 100%, 0 calc(var(--cut) - 0.4px));
+}
+
+.gm-log-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--island-color);
+}
+
+.gm-log-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gm-log-list li {
+  display: flex;
+  gap: 9px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(76, 201, 240, 0.12);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.gm-log-list li:last-child {
+  border-bottom: 0;
+}
+
+.gm-log-list li.is-saved {
+  color: var(--star-cyan);
+}
+
+.gm-log-n {
+  flex: 0 0 auto;
+  min-width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(76, 201, 240, 0.3);
+  border-radius: 50%;
+  font-family: var(--font-numbers);
+  font-size: 10px;
+  color: var(--text-soft);
+}
+
+.gm-log-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.gm-log-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.gm-log-chips span {
+  padding: 1px 7px;
+  border: 1px solid currentColor;
+  font-family: var(--font-numbers);
+  font-size: 11px;
+  color: var(--gold-jackpot);
+}
+
+.gm-log-empty {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* The board matters more than the log: below this width the log moves under the stage. */
+@media (max-width: 1080px) {
+  .gm-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .gm-stage {
+    flex: 0 0 auto;
+    min-height: 60vh;
+    overflow: visible;
+  }
+  .gm-log {
+    flex: 0 0 auto;
+    max-height: 200px;
+  }
 }
 
 .gm-muted {
@@ -240,86 +375,6 @@ button.gm-btn-primary:focus-visible {
 }
 
 /* ---------- result overlay ---------- */
-.gm-result {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: rgba(11, 13, 42, 0.55);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-}
-
-.gm-starburst {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.gm-result-card {
-  --cut: 24px;
-  --edge: var(--island-color);
-  --fill: rgba(16, 19, 54, 0.95);
-  max-width: min(960px, 100%);
-  padding: 30px 40px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
-  text-align: center;
-}
-
-.gm-result-kicker {
-  font-size: 13px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--island-color);
-}
-
-.gm-result-text {
-  font-family: var(--font-display);
-  font-size: clamp(26px, 4.2vw, 58px);
-  font-weight: 700;
-  line-height: 1.18;
-  text-wrap: balance;
-  text-shadow: 0 0 26px color-mix(in srgb, var(--island-color) 75%, transparent);
-}
-
-.gm-result-saved .gm-result-card {
-  --edge: var(--star-cyan);
-}
-
-.gm-result-saved .gm-result-text {
-  text-shadow: 0 0 26px rgba(76, 201, 240, 0.7);
-}
-
-.gm-chips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-}
-
-.gm-chip {
-  padding: 4px 12px;
-  border: 1px solid currentColor;
-  font-family: var(--font-numbers);
-  font-size: 16px;
-  color: var(--gold-jackpot);
-}
-
-.gm-result-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-}
-
 /* ---------- summary + notices ---------- */
 .gm-summary {
   margin: 0;
@@ -353,4 +408,139 @@ button.gm-btn-primary:focus-visible {
   }
   .gm-status { justify-self: start; }
   .gm-actions { justify-content: flex-start; }
+}
+
+/* ---------- teacher verdict bar ---------- */
+.gm-judge {
+  --cut: 12px;
+  --edge: rgba(255, 209, 102, 0.55);
+  --fill: rgba(22, 20, 52, 0.96);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+  max-width: 100%;
+}
+
+.gm-judge-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.gm-judge-who {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--island-color);
+}
+
+.gm-judge-ask {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.gm-judge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gm-judge-btn {
+  --cut: 7px;
+  min-height: 40px;
+  padding: 0 16px;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.gm-judge-btn.is-correct {
+  --edge: rgba(6, 214, 160, 0.85);
+  --fill: rgba(6, 70, 55, 0.9);
+  color: var(--success);
+}
+
+.gm-judge-btn.is-penalty {
+  --edge: rgba(239, 71, 111, 0.7);
+  --fill: rgba(70, 12, 30, 0.9);
+  color: var(--danger);
+}
+
+/* ---------- fixed-size board, scaled to the stage ---------- */
+.gm-fit {
+  position: relative;
+  flex: 1 1 auto;
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.gm-fit-board {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: 50% 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+/* ---------- shared surface texture ----------
+   One tiny repeating gradient per surface: no extra DOM, no canvas, no image request.
+   Applied to ::after so it never repaints the element's own content. */
+.gm-texture {
+  position: relative;
+  isolation: isolate;
+}
+
+.gm-texture::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0 2px, transparent 2px 5px);
+}
+
+/* A slow specular sweep. transform-only, so it composites on the GPU. */
+.gm-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+.gm-sheen::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  bottom: -60%;
+  width: 45%;
+  left: -60%;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.14) 45%, rgba(255, 255, 255, 0.28) 50%, rgba(255, 255, 255, 0.14) 55%, transparent);
+  transform: skewX(-18deg) translate3d(0, 0, 0);
+  animation: gmSheen 7s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes gmSheen {
+  0%, 62% { transform: skewX(-18deg) translate3d(0, 0, 0); }
+  100% { transform: skewX(-18deg) translate3d(430%, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-sheen::before { animation: none; opacity: 0; }
 }

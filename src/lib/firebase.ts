@@ -16,9 +16,3 @@ export const firebaseApp = initializeApp({
 
 export const auth = getAuth(firebaseApp);
 export const db = getFirestore(firebaseApp);
-
-/** Analytics is optional: only started where the browser supports it. */
-export async function startAnalytics() {
-  const { getAnalytics, isSupported } = await import('firebase/analytics');
-  if (await isSupported()) getAnalytics(firebaseApp);
-}

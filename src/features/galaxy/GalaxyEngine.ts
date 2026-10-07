@@ -26,6 +26,8 @@ export interface GalaxyCallbacks {
   onNav: (prev: number, next: number) => void;
   onEnter: (index: number) => void;
   onExit: () => void;
+  /** -1 when no island holds the camera. A focused island enters on the next click. */
+  onFocusChange: (index: number) => void;
 }
 
 export interface GalaxyOptions {
@@ -121,6 +123,11 @@ export class GalaxyEngine {
   private mouseT = { x: 0, y: 0 };
   private focusSlot = -1;
   private currentIsland: number | null = null;
+  /** Island the camera was last sent to and is sitting on: the next click on it enters.
+   *  Kept separate from currentIsland, which is a proximity heuristic and gets cleared
+   *  whenever the fit-all zoom happens to equal the fly-to zoom. */
+  private armed: number | null = null;
+  private lastFocus = -1;
   private lastNav = { pi: -2, ni: -2 };
   private anyHover = false;
 
@@ -198,7 +205,7 @@ export class GalaxyEngine {
       if (!document.hidden && performance.now() - this.lastTick > 250) gsap.ticker.tick();
     }, 120);
     void this.loadArt();
-    this.introCall = gsap.delayedCall(C.camera.introDelay, () => this.flyTo(0, 1.8, 'power3.inOut'));
+    this.introCall = gsap.delayedCall(C.camera.introDelay, () => this.flyTo(0, 1.8, 'power3.inOut', false));
   }
 
   // ================= public API =================
@@ -218,7 +225,16 @@ export class GalaxyEngine {
   }
 
   handleIslandClick(id: string) {
-    if (!this.dragMoved) void this.warpTo(id);
+    if (this.dragMoved) return;
+    const i = this.islands.findIndex(s => s.id === id);
+    if (i < 0) return;
+    // Clicking an island the camera is not already settled on only approaches it, so a stray
+    // click from across the galaxy never drops the class into a game.
+    if (this.armed !== i) {
+      this.flyTo(i);
+      return;
+    }
+    void this.warpTo(id);
   }
 
   focusIsland(i: number) {
@@ -239,19 +255,26 @@ export class GalaxyEngine {
   viewAll() {
     if (this.warping || !this.cam) return;
     this.cancelIntro();
+    this.armed = null;
     this.vel = { x: 0, y: 0 };
     this.currentIsland = null;
     this.camTo(this.fitAll(), 0.9, 'power3.out');
   }
 
-  flyTo(i: number, dur?: number, ease?: string) {
+  flyTo(i: number, dur?: number, ease?: string, arm = true) {
     const s = this.slotW[i];
     if (!s || this.warping || !this.cam) return;
     this.cancelIntro();
     this.vel = { x: 0, y: 0 };
     this.currentIsland = null;
-    this.camTo({ x: s.x, y: s.y, z: Math.max(this.activeTarget().z, 1) }, dur ?? C.camera.flyDuration, ease ?? 'power3.inOut', () => {
+    this.armed = null;
+    // zoom in past the fit-all level, otherwise arriving looks like nothing happened
+    const z = Math.max(this.activeTarget().z, this.zMin * 1.45, 1);
+    this.camTo({ x: s.x, y: s.y, z }, dur ?? C.camera.flyDuration, ease ?? 'power3.inOut', () => {
       this.currentIsland = i;
+      // The opening fly-in is not a choice the teacher made, so it must not arm the island:
+      // otherwise the very first click on it would drop straight into the game.
+      if (arm) this.armed = i;
     });
   }
 
@@ -267,6 +290,8 @@ export class GalaxyEngine {
     if (i < 0 || this.warping || !cam || this.destroyed) return Promise.resolve();
     this.saved = this.clampCam(this.activeTarget());
     this.savedIsland = this.currentIsland;
+    // entering consumes the arm, so coming back out needs the two clicks again
+    this.armed = null;
     this.cancelIntro();
     this.killCam();
     this.vel = { x: 0, y: 0 };
@@ -309,11 +334,13 @@ export class GalaxyEngine {
     this.cb.onExit();
     return new Promise(res => {
       this.warpResolve = res;
+      this.onRootScroll();
       const tl = gsap.timeline({
         onComplete: () => {
           this.warpTl = null;
           this.warpResolve = null;
           this.warping = false;
+          this.onRootScroll();
           this.camT = { ...back };
           this.currentIsland = this.savedIsland ?? null;
           res();
@@ -881,6 +908,7 @@ export class GalaxyEngine {
     if (this.pointers.size === 2) {
       this.startPinch();
       this.dragMoved = true;
+      this.disarm();
     }
     this.els.root.style.cursor = 'grabbing';
   };
@@ -908,6 +936,7 @@ export class GalaxyEngine {
     this.last = { ...p, t: now };
     if (!this.dragMoved && Math.hypot(p.x - this.downAt.x, p.y - this.downAt.y) > 6) {
       this.dragMoved = true;
+      this.disarm();
       try { this.els.root.setPointerCapture(e.pointerId); } catch { /* pointer already released */ }
     }
   };
@@ -945,6 +974,7 @@ export class GalaxyEngine {
     e.preventDefault();
     if (this.warping || !this.cam) return;
     this.cancelIntro();
+    this.disarm();
     this.vel = { x: 0, y: 0 };
     const b = this.activeTarget(), p = this.local(e), unit = e.deltaMode === 1 ? 16 : 1;
     const dx = e.deltaX * unit, dy = e.deltaY * unit;
@@ -969,6 +999,7 @@ export class GalaxyEngine {
     if (move) {
       e.preventDefault();
       this.cancelIntro();
+      this.disarm();
       this.vel = { x: 0, y: 0 };
       this.camTo({ x: b.x + (move[0] * this.vw * step) / b.z, y: b.y + (move[1] * this.vh * step) / b.z, z: b.z });
       return;
@@ -998,8 +1029,21 @@ export class GalaxyEngine {
 
   private onMotionPref = () => this.buildScene();
 
+  /** The map layer must never scroll: the camera does the panning. */
+  /** Dragging, zooming or key-panning means the teacher is looking around, not entering. */
+  private disarm = () => { this.armed = null; };
+
+  private onRootScroll = () => {
+    const root = this.els.root;
+    if (root.scrollLeft || root.scrollTop) {
+      root.scrollLeft = 0;
+      root.scrollTop = 0;
+    }
+  };
+
   private bind() {
     const root = this.els.root;
+    root.addEventListener('scroll', this.onRootScroll, { passive: true });
     root.addEventListener('pointerdown', this.onPointerDown);
     root.addEventListener('pointermove', this.onPointerMove);
     root.addEventListener('pointerup', this.onPointerUp);
@@ -1014,6 +1058,7 @@ export class GalaxyEngine {
 
   private unbind() {
     const root = this.els.root;
+    root.removeEventListener('scroll', this.onRootScroll);
     root.removeEventListener('pointerdown', this.onPointerDown);
     root.removeEventListener('pointermove', this.onPointerMove);
     root.removeEventListener('pointerup', this.onPointerUp);
@@ -1116,6 +1161,11 @@ export class GalaxyEngine {
         this.lastNav = { pi, ni };
         this.cb.onNav(pi, ni);
       }
+    }
+    const focus = this.warping || this.entered ? -1 : this.armed ?? -1;
+    if (focus !== this.lastFocus) {
+      this.lastFocus = focus;
+      this.cb.onFocusChange(focus);
     }
   }
 

@@ -1,13 +1,11 @@
 // Building blocks shared by every game screen. Chamfered (.rc-cut) surfaces, island-coloured accents.
-import { useEffect, useRef, type ReactNode } from 'react';
-import gsap from 'gsap';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { IslandDef } from '../../features/galaxy/config';
 import { useClassStore } from '../../store/classStore';
 import { sfx } from '../../lib/sfx';
 import type { PlayMode } from '../types';
-import { Starburst } from './Starburst';
-import { islandVars } from './hooks';
+import { islandVars, type Verdict } from './hooks';
 import './games.css';
 
 interface ShellProps {
@@ -19,9 +17,15 @@ interface ShellProps {
   onEnd?: () => void;
   children: ReactNode;
   className?: string;
+  /** Scale the board to fit the stage instead of letting it overflow. Setup forms keep
+   *  their natural size and scroll. */
+  fit?: boolean;
+  /** Round log shown in a side rail. Static by design: it replaces the old animated
+   *  result banner, which covered the cards/dice and cost a canvas burst per round. */
+  history?: RoundLog[];
 }
 
-export function GameShell({ island, title, status, onExit, onSettings, onEnd, children, className }: ShellProps) {
+export function GameShell({ island, title, status, onExit, onSettings, onEnd, children, className, history, fit }: ShellProps) {
   const { t } = useTranslation();
   const muted = useClassStore(s => s.muted), toggleMuted = useClassStore(s => s.toggleMuted);
   return (
@@ -42,8 +46,39 @@ export function GameShell({ island, title, status, onExit, onSettings, onEnd, ch
           <button type="button" className="rc-cut gm-btn" onClick={onExit}>{t('game.map')}</button>
         </div>
       </header>
-      <main className="gm-stage">{children}</main>
+      <div className="gm-body">
+        <main className="gm-stage">{fit ? <FitBoard>{children}</FitBoard> : children}</main>
+        {history && <RoundHistory rounds={history} />}
+      </div>
     </div>
+  );
+}
+
+/** Plain list of what happened, newest first. No animation, no canvas — it must never
+ *  compete with the board for frames. */
+export function RoundHistory({ rounds }: { rounds: RoundLog[] }) {
+  const { t } = useTranslation();
+  return (
+    <aside className="gm-log" aria-live="polite">
+      <h2 className="gm-log-title">{t('game.roundLog')}</h2>
+      {rounds.length ? (
+        <ol className="gm-log-list">
+          {[...rounds].reverse().map((r, i) => (
+            <li key={rounds.length - i} className={r.saved ? 'is-saved' : ''}>
+              <span className="gm-log-n">{rounds.length - i}</span>
+              <span className="gm-log-text">
+                {r.text}
+                {!!r.chips?.length && (
+                  <span className="gm-log-chips">{r.chips.map((c, k) => <span key={k}>{c}</span>)}</span>
+                )}
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="gm-log-empty">{t('game.roundLogEmpty')}</p>
+      )}
+    </aside>
   );
 }
 
@@ -127,42 +162,11 @@ export function PhraseField({ label, value, onChange, vars }: { label: string; v
   );
 }
 
-export interface Chip {
-  label: string;
-  color?: string;
-}
-
-/** Big result banner over the stage, with the star burst. */
-export function ResultOverlay({ island, kicker, text, chips, actions, burstKey, tone = 'win' }: {
-  island: IslandDef; kicker?: string; text: string; chips?: Chip[]; actions: ReactNode; burstKey: number; tone?: 'win' | 'saved';
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const tw = gsap.fromTo(el.querySelector('.gm-result-card'), { scale: reduced ? 1 : 0.7, opacity: 0 },
-      { scale: 1, opacity: 1, duration: reduced ? 0.5 : 0.6, ease: 'back.out(1.6)', clearProps: 'transform' });
-    return () => { tw.kill(); };
-  }, [burstKey]);
-  return (
-    <div ref={ref} className={`gm-result gm-result-${tone}`} role="dialog" aria-live="assertive">
-      {tone === 'win' && <Starburst color={island.color} burstKey={burstKey} />}
-      <div className="rc-cut gm-result-card">
-        {kicker && <div className="gm-result-kicker">{kicker}</div>}
-        <div className="gm-result-text">{text}</div>
-        {!!chips?.length && (
-          <div className="gm-chips">{chips.map((c, i) => <span key={i} className="gm-chip" style={c.color ? { color: c.color } : undefined}>{c.label}</span>)}</div>
-        )}
-        <div className="gm-result-actions">{actions}</div>
-      </div>
-    </div>
-  );
-}
-
 export interface RoundLog {
   text: string;
   saved?: boolean;
+  /** e.g. "Ana +3" — the points awarded for this round */
+  chips?: string[];
 }
 
 export function Summary({ rounds, onNew, onExit }: { rounds: RoundLog[]; onNew: () => void; onExit: () => void }) {
@@ -178,6 +182,70 @@ export function Summary({ rounds, onNew, onExit }: { rounds: RoundLog[]; onNew: 
         <ol className="gm-summary">{rounds.map((r, i) => <li key={i} className={r.saved ? 'is-saved' : ''}>{r.text}</li>)}</ol>
       ) : <p className="gm-muted">{t('game.summaryEmpty')}</p>}
     </Panel>
+  );
+}
+
+/**
+ * Lays the board out at a fixed design size and scales it to fit the stage, the way a slide
+ * deck does. Without this each game had to hand-tune heights, the tall ones overflowed, and
+ * the resulting scroll was what left the map displaced on the way back.
+ */
+export function FitBoard({ width = 1040, height = 600, max = 1.5, children }: {
+  width?: number; height?: number; max?: number; children: ReactNode;
+}) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    // Measured on the wrapper, which is never scaled, so this cannot feed back on itself.
+    const fit = () => {
+      const { width: w, height: h } = box.getBoundingClientRect();
+      if (!w || !h) return;
+      setScale(Math.min(max, w / width, h / height));
+    };
+    const ro = new ResizeObserver(fit);
+    ro.observe(box);
+    fit();
+    return () => ro.disconnect();
+  }, [width, height, max]);
+
+  return (
+    <div ref={boxRef} className="gm-fit">
+      <div
+        className="gm-fit-board"
+        style={{ width, height, transform: `translate(-50%, -50%) scale(${scale})` }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Teacher-only verdict bar. Nothing is scored until one of these is pressed. */
+export function AnswerJudge({ names, points, summary, onJudge }: {
+  names: string[]; points: number; summary: string; onJudge: (v: Verdict) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="rc-cut gm-judge" role="group" aria-label={t('game.judgeTitle')}>
+      <div className="gm-judge-head">
+        <span className="gm-judge-who">{names.join(' & ') || summary}</span>
+        <span className="gm-judge-ask">{t('game.judgeTitle')}</span>
+      </div>
+      <div className="gm-judge-actions">
+        <button type="button" className="rc-cut gm-judge-btn is-correct" onClick={() => onJudge('correct')}>
+          {t('game.judgeCorrect', { points })}
+        </button>
+        <button type="button" className="rc-cut gm-judge-btn" onClick={() => onJudge('wrong')}>
+          {t('game.judgeWrong')}
+        </button>
+        <button type="button" className="rc-cut gm-judge-btn is-penalty" onClick={() => onJudge('penalty')}>
+          {t('game.judgePenalty', { points })}
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -24,9 +24,12 @@ service cloud.firestore {
       allow create, update: if isSignedIn() && request.auth.uid == uid;
     }
 
-    // Join codes for courses (read public to join, teacher writes)
+    // Join codes for courses (look up the one you were given; teacher writes)
     match /joinCodes/{code} {
-      allow read: if isSignedIn();
+      // `get` only, never `list`: `read` would let any signed-in visitor enumerate every
+      // class code in the project and walk into any room.
+      allow get: if isSignedIn();
+      allow list: if false;
       allow write: if isSignedIn() && (
         request.resource.data.teacherId == request.auth.uid ||
         resource.data.teacherId == request.auth.uid

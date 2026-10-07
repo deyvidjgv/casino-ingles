@@ -15,7 +15,7 @@
 .my-arena {
   position: relative;
   width: 100%;
-  min-height: 520px;
+  min-height: 430px;
   background: radial-gradient(circle at 50% 50%, #03040e 0%, #090b24 55%, #050616 100%);
   border: 3px solid var(--gold-jackpot);
   box-shadow:
@@ -129,13 +129,24 @@
   filter: grayscale(0.5);
 }
 
+/* While GSAP moves a box to its new slot, nothing else may touch its transform. */
+.my-box-wrap.is-shuffling {
+  animation: none !important;
+  transition: none;
+  z-index: 3;
+}
+
+.my-box-wrap.is-shuffling:hover {
+  transform: none;
+}
+
+.my-prompt {
+  font-size: 14px;
+  color: var(--text-soft);
+}
+
 /* Floating Animation */
-.my-float-1 { animation: my-float 3.4s ease-in-out infinite alternate; }
-.my-float-2 { animation: my-float 2.8s ease-in-out infinite alternate 0.5s; }
-.my-float-3 { animation: my-float 3.2s ease-in-out infinite alternate 1.0s; }
-.my-float-4 { animation: my-float 2.6s ease-in-out infinite alternate 1.5s; }
-.my-float-5 { animation: my-float 3.5s ease-in-out infinite alternate 0.7s; }
-.my-float-6 { animation: my-float 2.9s ease-in-out infinite alternate 1.2s; }
+.my-float { animation: my-float 3.1s ease-in-out infinite alternate; }
 
 @keyframes my-float {
   from { transform: translateY(0px); }
@@ -208,19 +219,6 @@
   transform: rotateX(-120deg) translateY(-8px);
 }
 
-.my-box-icon {
-  font-size: 32px;
-  filter: drop-shadow(0 0 10px var(--gold-jackpot));
-}
-
-.my-box-num {
-  font-family: var(--font-numbers);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--gold-jackpot);
-}
-
 .my-box-status {
   font-size: 10px;
   letter-spacing: 0.15em;
@@ -279,7 +277,114 @@
   .my-boxes-stage {
     gap: 16px;
   }
-  .my-box-icon {
-    font-size: 24px;
   }
+
+
+/* ---------- box container ---------- */
+.my-box-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background:
+    linear-gradient(160deg, rgba(123, 47, 247, 0.5) 0%, rgba(26, 30, 74, 0.95) 48%, rgba(8, 10, 32, 0.98) 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(241, 243, 255, 0.28),
+    inset 0 -14px 26px rgba(0, 0, 0, 0.55),
+    inset 0 0 26px rgba(123, 47, 247, 0.35);
+  border: 1px solid rgba(76, 201, 240, 0.5);
+}
+
+/* seam + rivets, so the box reads as a physical container */
+.my-box-body::before {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 30%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(76, 201, 240, 0.65), transparent);
+}
+
+.my-box-body::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px dashed rgba(76, 201, 240, 0.18);
+  pointer-events: none;
+}
+
+/* the sigil replaces the box number: identical on every box */
+.my-box-sigil {
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--gold-jackpot);
+  transform: rotate(45deg);
+  background: radial-gradient(circle at 50% 50%, rgba(255, 209, 102, 0.35) 0%, transparent 70%);
+  box-shadow: 0 0 14px rgba(255, 209, 102, 0.5), inset 0 0 12px rgba(255, 209, 102, 0.4);
+}
+
+.my-box-status {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--star-cyan);
+  text-shadow: 0 0 12px rgba(76, 201, 240, 0.8);
+}
+
+.my-box-wrap.is-opened .my-box-sigil {
+  border-color: var(--text-soft);
+  box-shadow: none;
+  opacity: 0.5;
+}
+
+/* ---------- reveal ---------- */
+.my-content-reveal {
+  --cut: 12px;
+  --edge: var(--gold-jackpot);
+  --fill: rgba(10, 12, 34, 0.99);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  transform: translateX(-50%);
+  z-index: 5;
+  width: max-content;
+  max-width: 260px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
+  opacity: 1;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+}
+
+.my-reveal-tag {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-jackpot);
+}
+
+.my-reveal-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #fff;
+  text-wrap: balance;
+}
+
+/* an opened box dims, but its reveal must stay fully readable */
+.my-box-wrap.is-opened {
+  opacity: 1;
+  filter: none;
+}
+
+.my-box-wrap.is-opened .my-box-3d {
+  opacity: 0.45;
+  filter: grayscale(0.55);
 }

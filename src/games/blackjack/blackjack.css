@@ -15,7 +15,7 @@
 .bk-table {
   position: relative;
   width: 100%;
-  min-height: 480px;
+  min-height: 470px;
   background: radial-gradient(ellipse 80% 65% at 50% 50%, #301056 0%, #1c0834 65%, #0e051c 100%);
   border: 3px solid var(--star-cyan);
   box-shadow:

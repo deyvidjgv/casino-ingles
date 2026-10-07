@@ -1,14 +1,14 @@
 // Jackpot Nebula — slot machine. Result is drawn first (crypto), then every reel strip is built so
 // its tween ends exactly on the drawn value.
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useTranslation } from 'react-i18next';
 import { useClassStore } from '../../store/classStore';
 import { pickDistinct, pickOne } from '../../lib/random';
 import { fillTemplate } from '../../lib/template';
 import { sfx } from '../../lib/sfx';
-import { CommonSetup, Field, GameShell, Notice, Panel, PhraseField, ResultOverlay, Segmented, Stepper, Summary, type RoundLog } from '../shared/ui';
-import { useIslandConfig, useLocalized, usePool } from '../shared/hooks';
+import { AnswerJudge, CommonSetup, Field, GameShell, Notice, Panel, PhraseField, Segmented, Stepper, Summary, type RoundLog } from '../shared/ui';
+import { useIslandConfig, useJudgedAward, useLocalized, usePool } from '../shared/hooks';
 import type { GameProps, Localized, PlayMode } from '../types';
 import './slot.css';
 
@@ -53,7 +53,7 @@ export function SlotGame({ island, onExit }: GameProps) {
   const { t } = useTranslation();
   const { lang, pick } = useLocalized();
   const allStudents = useClassStore(s => s.students), topics = useClassStore(s => s.topics), questions = useClassStore(s => s.questions);
-  const addPoints = useClassStore(s => s.addPoints), addHistory = useClassStore(s => s.addHistory);
+  const addHistory = useClassStore(s => s.addHistory);
   const students = useMemo(() => allStudents.filter(s => s.active), [allStudents]);
 
   const [config, setConfig] = useIslandConfig<SlotConfig>(island.id, DEFAULTS);
@@ -62,11 +62,17 @@ export function SlotGame({ island, onExit }: GameProps) {
   const [rounds, setRounds] = useState<RoundLog[]>([]);
   const pool = usePool(students, config.mode);
 
+  // The reels only choose who answers; the teacher decides whether it was worth points.
+  const onSettled = useCallback((entry: RoundLog, points: number, studentIds: string[]) => {
+    addHistory({ islandId: island.id, game: 'slot', summary: entry.text, studentIds, points });
+    setRounds(r => [...r, entry]);
+  }, [addHistory, island.id]);
+  const { pending, setPending, judge } = useJudgedAward(onSettled);
+
   const reels = config.reels;
   const [strips, setStrips] = useState<string[][]>(() => reels.map(() => ['★', '★', '★']));
   const [spinning, setSpinning] = useState(false);
   const [spinId, setSpinId] = useState(0);
-  const [result, setResult] = useState<{ text: string; chips: string[]; burst: number } | null>(null);
   const drawnRef = useRef<Drawn | null>(null);
   const stripRefs = useRef<(HTMLDivElement | null)[]>([]);
   const leverRef = useRef<HTMLButtonElement>(null);
@@ -106,7 +112,6 @@ export function SlotGame({ island, onExit }: GameProps) {
     if (spinning || blocker) return;
     const drawn = draw();
     drawnRef.current = drawn;
-    setResult(null);
     setStrips(prev => reels.map((k, r) => {
       const src = sourceOf(k), cur = prev[r] ?? ['★', '★', '★'];
       const fill = Array.from({ length: FILLER + r * REEL_EXTRA }, () => pickOne(src));
@@ -157,20 +162,21 @@ export function SlotGame({ island, onExit }: GameProps) {
     setStrips(prev => prev.map(s => s.slice(-3)));
     setSpinning(false);
     const text = fillTemplate(pick(config.phrases[config.preset]), drawn.vars);
-    const chips = drawn.studentIds.length && config.points ? drawn.values.filter((_, i) => reels[i] === 'student').map(n => `${n} +${config.points}`) : [];
-    addPoints(drawn.studentIds, config.points);
     if (config.mode === 'eliminate') pool.markUsed(drawn.studentIds);
-    addHistory({ islandId: island.id, game: 'slot', summary: text, studentIds: drawn.studentIds, points: config.points });
-    setRounds(r => [...r, { text }]);
     sfx.win();
-    setResult({ text, chips, burst: Date.now() });
+    const names = drawn.values.filter((_, i) => reels[i] === 'student');
+    if (drawn.studentIds.length) {
+      setPending({ studentIds: drawn.studentIds, names, points: config.points, summary: text });
+    } else {
+      // nothing to score: log the round as it stands
+      onSettled({ text, chips: [] }, 0, []);
+    }
   }
 
   function startGame(next: SlotConfig) {
     setConfig(next);
     pool.reset();
     setRounds([]);
-    setResult(null);
     setStrips(next.reels.map(() => ['★', '★', '★']));
     setPhase('play');
   }
@@ -178,7 +184,6 @@ export function SlotGame({ island, onExit }: GameProps) {
   function endGame() {
     tlRef.current?.kill();
     setSpinning(false);
-    setResult(null);
     setPhase('summary');
   }
 
@@ -201,7 +206,9 @@ export function SlotGame({ island, onExit }: GameProps) {
   return (
     <GameShell island={island} title={t('slot.name')} status={status} onExit={onExit}
       onSettings={phase === 'play' && !spinning ? () => { setDraft(config); setPhase('setup'); } : undefined}
-      onEnd={phase === 'play' && !spinning ? endGame : undefined}>
+      onEnd={phase === 'play' && !spinning ? endGame : undefined}
+      history={phase === 'play' ? rounds : undefined}
+      fit={phase === 'play'}>
 
       {phase === 'setup' && (
         <Panel title={t('game.setup')} footer={
@@ -248,7 +255,7 @@ export function SlotGame({ island, onExit }: GameProps) {
               <span className="sl-marquee-comet" />
               <span className="sl-marquee-text">{island.label}</span>
             </div>
-            <div className="sl-cabinet">
+            <div className="sl-cabinet gm-texture gm-sheen">
               <div className="sl-bulbs" aria-hidden="true">{Array.from({ length: 22 }, (_, i) => <span key={i} style={{ animationDelay: `${i * 0.07}s` }} />)}</div>
               <div className="sl-window" style={{ gridTemplateColumns: `repeat(${reels.length}, minmax(0, 1fr))` }}>
                 {reels.map((k, r) => (
@@ -271,7 +278,9 @@ export function SlotGame({ island, onExit }: GameProps) {
             </button>
           </div>
 
-          {blocker && !spinning ? (
+          {pending ? (
+            <AnswerJudge names={pending.names} points={pending.points} summary={pending.summary} onJudge={judge} />
+          ) : blocker && !spinning ? (
             <Notice text={blocker} action={config.mode === 'eliminate' && pool.available.length < studentReels && students.length >= studentReels
               ? <button type="button" className="rc-cut gm-btn" onClick={pool.reset}>{t('game.restartRound')}</button> : undefined} />
           ) : (
@@ -284,14 +293,6 @@ export function SlotGame({ island, onExit }: GameProps) {
 
       {phase === 'summary' && <Summary rounds={rounds} onNew={() => { setDraft(config); setPhase('setup'); }} onExit={onExit} />}
 
-      {result && (
-        <ResultOverlay island={island} kicker={t('slot.jackpot')} text={result.text} burstKey={result.burst}
-          chips={result.chips.map(label => ({ label }))}
-          actions={<>
-            <button type="button" className="rc-cut gm-btn gm-btn-primary" disabled={!!blocker} onClick={() => { setResult(null); spin(); }}>{t('slot.spinAgain')}</button>
-            <button type="button" className="rc-cut gm-btn" onClick={() => setResult(null)}>{t('game.continue')}</button>
-          </>} />
-      )}
     </GameShell>
   );
 }

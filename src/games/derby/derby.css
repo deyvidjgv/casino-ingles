@@ -1,0 +1,366 @@
+/* Stellar Derby — Greek hippodrome. Marble, gold meander and emerald turf, matching the island art. */
+
+.dv-track {
+  position: relative;
+  width: 1040px;
+  height: 600px;
+}
+
+.dv-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- horses ---------- */
+.dv-horse {
+  position: absolute;
+  /* `left` is the nose: the horse trails behind its own progress mark */
+  transform: translate(-88%, -50%);
+  pointer-events: none;
+  will-change: left;
+}
+
+.dv-horse img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px var(--glow));
+}
+
+/* pool of light the horse sits in, so a dark lane never swallows it */
+.dv-horse-glow {
+  position: absolute;
+  left: 8%;
+  bottom: -6%;
+  width: 84%;
+  height: 26%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, var(--glow) 0%, transparent 72%);
+  opacity: 0.45;
+}
+
+.dv-plate {
+  position: absolute;
+  top: -6px;
+  right: 2%;
+  padding: 1px 7px;
+  border-radius: 3px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dv-horse.is-boosting img {
+  filter: drop-shadow(0 0 22px var(--glow)) brightness(1.25);
+}
+
+.dv-horse.is-boosting::before {
+  content: '';
+  position: absolute;
+  right: 74%;
+  top: 34%;
+  width: 90px;
+  height: 22%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--glow));
+  opacity: 0.7;
+  filter: blur(3px);
+}
+
+/* frozen for a question: the horses hold, piaffing, instead of sliding on */
+.dv-horse.is-frozen img {
+  animation: dvPiaffe 0.9s ease-in-out infinite;
+}
+
+@keyframes dvPiaffe {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(-1.5deg); }
+}
+
+.dv-horse.is-winner img {
+  animation: dvWinner 0.7s ease-in-out infinite;
+}
+
+@keyframes dvWinner {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-9px) scale(1.04); }
+}
+
+/* ---------- scene animation ---------- */
+.dv-flame {
+  transform-origin: center bottom;
+  animation: dvFlame 1.6s ease-in-out infinite;
+}
+
+@keyframes dvFlame {
+  0%, 100% { transform: scaleY(1) scaleX(1); opacity: 0.85; }
+  50% { transform: scaleY(1.16) scaleX(0.92); opacity: 1; }
+}
+
+.dv-wreath {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.dv-arch.is-lit .dv-wreath {
+  animation: dvWreath 1.1s ease-in-out infinite;
+}
+
+@keyframes dvWreath {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* ---------- banner over the board ---------- */
+.dv-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 7px 22px;
+  --cut: 12px;
+  --edge: rgba(255, 209, 102, 0.75);
+  --fill: rgba(12, 22, 18, 0.9);
+}
+
+.dv-banner-title {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-jackpot);
+}
+
+.dv-banner-sub {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--text-soft);
+}
+
+/* ---------- countdown / question / podium overlays ---------- */
+.dv-over {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: rgba(6, 12, 10, 0.78);
+  text-align: center;
+  padding: 30px;
+}
+
+.dv-count {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 150px;
+  font-weight: 700;
+  color: var(--gold-jackpot);
+  text-shadow: 0 0 40px rgba(255, 209, 102, 0.55);
+  animation: dvCount 1s ease-out;
+}
+
+@keyframes dvCount {
+  from { transform: scale(2.1); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.dv-q-kicker {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 14px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold-jackpot);
+}
+
+.dv-q-text {
+  max-width: 800px;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.32;
+  color: #fff;
+}
+
+/* ---------- lane roster / boost picker ---------- */
+.dv-riders {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 9px;
+}
+
+.dv-rider {
+  --cut: 8px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 14px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.dv-rider[disabled] { cursor: default; opacity: 0.55; }
+
+.dv-rider.is-on {
+  --edge: rgba(255, 209, 102, 0.95);
+  --fill: rgba(70, 55, 10, 0.9);
+  color: var(--gold-jackpot);
+}
+
+.dv-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: 0 0 9px currentColor;
+}
+
+.dv-lane-n {
+  font-family: var(--font-numbers);
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* ---------- podium ---------- */
+.dv-podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 14px;
+}
+
+.dv-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 168px;
+  padding: 14px 10px 12px;
+  background: linear-gradient(180deg, #EDE8DA, #C9C0AA);
+  border-top: 4px solid var(--gold-jackpot);
+  color: #1A1E3A;
+}
+
+.dv-step-1 { height: 152px; }
+.dv-step-2 { height: 118px; }
+.dv-step-3 { height: 96px; }
+
+.dv-step-pos {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.dv-step-name {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- betting board ---------- */
+.dv-bets {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dv-bet {
+  --cut: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.dv-bet-n {
+  font-family: var(--font-numbers);
+  font-size: 13px;
+  color: var(--gold-jackpot);
+}
+
+/* Teacher's control to freeze the race, parked clear of the lanes. */
+.dv-ask {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  padding: 8px 16px;
+  --cut: 10px;
+  --edge: rgba(255, 209, 102, 0.9);
+  --fill: rgba(70, 55, 10, 0.92);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-jackpot);
+  cursor: pointer;
+}
+
+.dv-ask[disabled] { opacity: 0.45; cursor: default; }
+
+/* ---------- tap pads (shared screen fallback) ---------- */
+.dv-pads {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dv-pad {
+  --cut: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 92px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.dv-pad-key {
+  font-family: var(--font-numbers);
+  font-size: 15px;
+  color: var(--gold-jackpot);
+}
+
+.dv-pad:active { transform: translateY(2px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .dv-flame,
+  .dv-wreath,
+  .dv-horse.is-frozen img,
+  .dv-horse.is-winner img,
+  .dv-count {
+    animation: none;
+  }
+}

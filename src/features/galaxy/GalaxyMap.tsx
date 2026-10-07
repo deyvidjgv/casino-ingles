@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { GalaxyEngine } from './GalaxyEngine';
 import { DEFAULT_ISLANDS, GALAXY_CONFIG, type IslandDef } from './config';
 import { waveIslands } from './layout';
-import { setLang } from '../../i18n';
 import './GalaxyMap.css';
 
 export interface GalaxyMapHandle {
@@ -25,15 +24,19 @@ interface GalaxyMapProps {
   /** Renders the game for the entered island; defaults to a placeholder panel. */
   renderIsland?: (island: IslandDef, back: () => void) => ReactNode;
   onIslandChange?: (island: IslandDef | null) => void;
+  /** Fired on hover/click, before the warp starts: a chance to warm the island's game. */
+  onIslandIntent?: (island: IslandDef) => void;
+  /** False for students and guests: they may look around the map but never open a game. */
+  canEnter?: boolean;
 }
 
 const islandVars = (s: IslandDef) => ({ '--island-color': s.color, '--island-accent': s.accent }) as CSSProperties;
 
 export function GalaxyMap({
   ref, islands: baseIslands = DEFAULT_ISLANDS, starDensity = 1, worldScreens = GALAXY_CONFIG.world.screens,
-  forceReducedMotion = false, renderIsland, onIslandChange,
+  forceReducedMotion = false, renderIsland, onIslandChange, onIslandIntent, canEnter = true,
 }: GalaxyMapProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const islands = useMemo(() => waveIslands(baseIslands), [baseIslands]);
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -50,6 +53,8 @@ export function GalaxyMap({
   const [nav, setNav] = useState({ prev: -1, next: -1 });
   const [entered, setEntered] = useState<number | null>(null);
   const [minimapOpen, setMinimapOpen] = useState(true);
+  const [hintVisible, setHintVisible] = useState(true);
+  const [focused, setFocused] = useState(-1);
 
   useEffect(() => {
     const [root, canvas, fx, grain, loader, hud, fade, debug] = [
@@ -69,6 +74,7 @@ export function GalaxyMap({
           setEntered(null);
           onIslandChange?.(null);
         },
+        onFocusChange: setFocused,
       },
       // later option changes go through setOptions below
       { starDensity, worldScreens, forceReducedMotion },
@@ -88,6 +94,12 @@ export function GalaxyMap({
   useEffect(() => {
     engineRef.current?.setOptions({ starDensity, worldScreens, forceReducedMotion });
   }, [starDensity, worldScreens, forceReducedMotion]);
+
+  // the hint is onboarding copy: show it once, then give the space back to the map
+  useEffect(() => {
+    const id = setTimeout(() => setHintVisible(false), 7000);
+    return () => clearTimeout(id);
+  }, []);
 
   // before paint, so the panel never flashes in fully visible
   useLayoutEffect(() => {
@@ -113,7 +125,6 @@ export function GalaxyMap({
     engineRef.current?.setMiniView(el);
   };
   const back = useCallback(() => { void engineRef.current?.returnToMap(); }, []);
-  const lang = i18n.language === 'es' ? 'es' : 'en';
   const prevIsland = islands[nav.prev], nextIsland = islands[nav.next], island = entered == null ? null : islands[entered];
 
   return (
@@ -129,8 +140,17 @@ export function GalaxyMap({
               className="gx-island"
               data-island-body=""
               aria-label={t('map.enter', { name: s.label })}
-              onClick={() => engineRef.current?.handleIslandClick(s.id)}
-              onFocus={() => engineRef.current?.focusIsland(i)}
+              onClick={() => {
+                onIslandIntent?.(s);
+                // Watchers can still fly around the map; only a teacher opens a game.
+                if (canEnter) engineRef.current?.handleIslandClick(s.id);
+                else engineRef.current?.flyTo(i);
+              }}
+              onPointerEnter={() => onIslandIntent?.(s)}
+              onFocus={() => {
+                onIslandIntent?.(s);
+                engineRef.current?.focusIsland(i);
+              }}
               onBlur={() => engineRef.current?.focusIsland(-1)}
             >
               {s.core && (
@@ -144,7 +164,10 @@ export function GalaxyMap({
               )}
               <img src={s.image} alt="" draggable={false} decoding="async" />
             </button>
-            <div className="gx-island-label" data-island-label="">{s.label}</div>
+            <div className="gx-island-label" data-island-label="">
+              {s.label}
+              {canEnter && focused === i && <span className="gx-island-cta">{t('map.clickToEnter')}</span>}
+            </div>
           </div>
         ))}
       </div>
@@ -152,14 +175,7 @@ export function GalaxyMap({
       <canvas ref={fxRef} className="gx-layer gx-fx" />
 
       <div ref={hudRef} className="gx-layer gx-hud">
-        <div className="gx-hint">{t('map.hint')}</div>
-
-        <div className="gx-top-actions">
-          <button type="button" data-ui="" className="rc-cut gx-glass gx-chip" aria-label={t('lang.switchAria')}
-            onClick={() => setLang(lang === 'en' ? 'es' : 'en')}>
-            {t('lang.switchTo')}
-          </button>
-        </div>
+        {hintVisible && <div className="gx-hint">{t('map.hint')}</div>}
 
         {prevIsland && (
           <div className="gx-arrow gx-arrow-prev">

@@ -4,7 +4,12 @@ import { useClassStore, type Student } from '../../store/classStore';
 import { sfx } from '../../lib/sfx';
 import './Leaderboard.css';
 
-export function Leaderboard() {
+interface LeaderboardProps {
+  /** only a teacher can move points or flip attendance */
+  canManage: boolean;
+}
+
+export function Leaderboard({ canManage }: LeaderboardProps) {
   const { i18n } = useTranslation();
   const students = useClassStore(s => s.students);
   const adjustPoints = useClassStore(s => s.adjustPoints);
@@ -13,9 +18,8 @@ export function Leaderboard() {
 
   const lang = i18n.language === 'es' ? 'es' : 'en';
 
-  // Sort descending by points
   const sorted = [...students].sort((a, b) => b.points - a.points);
-  const topActive = sorted.filter(s => s.active).slice(0, 5);
+  const topActive = sorted.filter(s => s.active).slice(0, 3);
 
   const handleAdjust = (student: Student, delta: number) => {
     sfx.click();
@@ -36,22 +40,21 @@ export function Leaderboard() {
         }}
         aria-expanded={open}
       >
-        <div className="rc-lb-summary">
-          <span className="rc-lb-trophy">🏆</span>
+        <span className="rc-lb-summary">
           <span className="rc-lb-title">{lang === 'es' ? 'MARCADOR' : 'LEADERBOARD'}</span>
           {!open && topActive.length > 0 && (
-            <div className="rc-lb-mini-podium">
-              {topActive.slice(0, 3).map((st, idx) => (
+            <span className="rc-lb-mini-podium">
+              {topActive.map((st, idx) => (
                 <span key={st.id} className="rc-mini-player">
-                  <span className="rc-mini-rank">#{idx + 1}</span>
+                  <span className="rc-mini-rank" data-rank={idx + 1}>{idx + 1}</span>
                   <span className="rc-mini-name">{st.name}</span>
-                  <span className="rc-mini-pts">{st.points}p</span>
+                  <span className="rc-mini-pts">{st.points}</span>
                 </span>
               ))}
-            </div>
+            </span>
           )}
-        </div>
-        <span className="rc-lb-chevron">{open ? '▼' : '▲'}</span>
+        </span>
+        <span className="rc-lb-chevron" data-open={open} aria-hidden="true" />
       </button>
 
       {open && (
@@ -59,24 +62,28 @@ export function Leaderboard() {
           <div className="rc-lb-list">
             {sorted.map((st, index) => (
               <div key={st.id} className={`rc-lb-row ${st.active ? '' : 'is-inactive'}`}>
-                <div className="rc-lb-rank">
-                  {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
-                </div>
+                <div className="rc-lb-rank" data-rank={index + 1}>{index + 1}</div>
 
                 <div className="rc-lb-avatar">
-                  <img src={avatarUrl(st.name)} alt="" loading="lazy" />
+                  <img src={avatarUrl(st.name)} alt="" loading="lazy" decoding="async" />
                 </div>
 
                 <div className="rc-lb-info">
                   <div className="rc-lb-name">{st.name}</div>
-                  <button
-                    type="button"
-                    className="rc-lb-status"
-                    title={lang === 'es' ? 'Alternar presente/ausente' : 'Toggle present/absent'}
-                    onClick={() => toggleStudentActive(st.id)}
-                  >
-                    {st.active ? (lang === 'es' ? 'Presente' : 'Present') : (lang === 'es' ? 'Ausente' : 'Absent')}
-                  </button>
+                  {canManage ? (
+                    <button
+                      type="button"
+                      className="rc-lb-status"
+                      title={lang === 'es' ? 'Alternar presente/ausente' : 'Toggle present/absent'}
+                      onClick={() => toggleStudentActive(st.id)}
+                    >
+                      {st.active ? (lang === 'es' ? 'Presente' : 'Present') : (lang === 'es' ? 'Ausente' : 'Absent')}
+                    </button>
+                  ) : (
+                    <span className="rc-lb-status is-static">
+                      {st.active ? (lang === 'es' ? 'Presente' : 'Present') : (lang === 'es' ? 'Ausente' : 'Absent')}
+                    </span>
+                  )}
                 </div>
 
                 <div className="rc-lb-pts">
@@ -84,33 +91,25 @@ export function Leaderboard() {
                   <span className="rc-pts-unit">pts</span>
                 </div>
 
-                <div className="rc-lb-quick-actions">
-                  <button
-                    type="button"
-                    className="rc-cut rc-quick-btn"
-                    title="+1 punto"
-                    onClick={() => handleAdjust(st, 1)}
-                  >
-                    +1
-                  </button>
-                  <button
-                    type="button"
-                    className="rc-cut rc-quick-btn"
-                    title="+5 puntos"
-                    onClick={() => handleAdjust(st, 5)}
-                  >
-                    +5
-                  </button>
-                  <button
-                    type="button"
-                    className="rc-cut rc-quick-btn rc-minus"
-                    title="-1 punto"
-                    disabled={st.points <= 0}
-                    onClick={() => handleAdjust(st, -1)}
-                  >
-                    −1
-                  </button>
-                </div>
+                {canManage && (
+                  <div className="rc-lb-quick-actions">
+                    <button type="button" className="rc-cut rc-quick-btn" title="+1" onClick={() => handleAdjust(st, 1)}>
+                      +1
+                    </button>
+                    <button type="button" className="rc-cut rc-quick-btn" title="+5" onClick={() => handleAdjust(st, 5)}>
+                      +5
+                    </button>
+                    <button
+                      type="button"
+                      className="rc-cut rc-quick-btn rc-minus"
+                      title="-1"
+                      disabled={st.points <= 0}
+                      onClick={() => handleAdjust(st, -1)}
+                    >
+                      −1
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useClassStore } from '../../store/classStore';
 import { useTranslation } from 'react-i18next';
 import type { IslandDef } from '../../features/galaxy/config';
 import type { Localized, PlayMode } from '../types';
@@ -43,6 +44,57 @@ export function useLocalized() {
   return { lang, pick: (l: Localized) => l[lang] || l.en };
 }
 
-export function usePrefersReducedMotion() {
-  return useMemo(() => matchMedia('(prefers-reduced-motion: reduce)').matches, []);
+/** Verdict the teacher gives on a spoken answer. */
+export type Verdict = 'correct' | 'wrong' | 'penalty';
+
+export interface PendingAward {
+  studentIds: string[];
+  names: string[];
+  /** points at stake, from the game's own settings */
+  points: number;
+  /** what the round produced, for the log line */
+  summary: string;
+}
+
+/**
+ * Points are never awarded by the animation landing — the teacher judges the answer first.
+ * The award and the log entry both happen here, exactly once per round, so a round can
+ * never be scored twice or scored and left out of the log.
+ */
+export function useJudgedAward(
+  onSettled: (entry: { text: string; chips: string[]; saved?: boolean }, points: number, studentIds: string[]) => void,
+) {
+  const addPoints = useClassStore(s => s.addPoints);
+  const adjustPoints = useClassStore(s => s.adjustPoints);
+  const [pending, setPendingState] = useState<PendingAward | null>(null);
+  // The ref, not the state, is the guard: state updaters must stay pure (React runs them
+  // twice in development), so the award cannot live inside one.
+  const pendingRef = useRef<PendingAward | null>(null);
+
+  const setPending = useCallback((award: PendingAward | null) => {
+    pendingRef.current = award;
+    setPendingState(award);
+  }, []);
+
+  const judge = useCallback((verdict: Verdict) => {
+    const current = pendingRef.current;
+    if (!current) return; // already judged: a second click must not score again
+    pendingRef.current = null;
+    setPendingState(null);
+
+    const { studentIds, names, points, summary } = current;
+    let delta = 0;
+    if (verdict === 'correct') {
+      delta = points;
+      if (points > 0 && studentIds.length) addPoints(studentIds, points);
+    } else if (verdict === 'penalty') {
+      delta = -points;
+      // adjustPoints floors at zero, so nobody ends the class in the negative
+      if (points > 0) studentIds.forEach(id => adjustPoints(id, -points));
+    }
+    const chips = delta === 0 ? [] : names.map(n => `${n} ${delta > 0 ? '+' : '−'}${Math.abs(delta)}`);
+    onSettled({ text: summary, chips, saved: verdict !== 'correct' }, delta, studentIds);
+  }, [addPoints, adjustPoints, onSettled]);
+
+  return { pending, setPending, judge };
 }

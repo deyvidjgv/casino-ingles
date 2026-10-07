@@ -1,14 +1,66 @@
 {
   "app": {
-    "name": "Random Classroom"
+    "name": "RandomClassroom"
   },
   "lang": {
     "switchTo": "English",
     "switchAria": "Switch to English"
   },
+  "auth": {
+    "brand": "RandomClassroom",
+    "tagline": "Inglés de clase, jugado por toda la galaxia",
+    "chooseRole": "Elige cómo entras",
+    "chooseRoleNote": "Tu rol decide qué puedes ver y controlar una vez dentro de la galaxia.",
+    "changeRole": "Cambiar rol",
+    "role": {
+      "teacher": "Profesor",
+      "student": "Estudiante",
+      "guest": "Invitado"
+    },
+    "roleDesc": {
+      "teacher": "Dirige la clase, gestiona estudiantes y temas, otorga puntos.",
+      "student": "Entra con el código de clase que muestra tu profesor. Sin contraseña.",
+      "guest": "Explora sin cuenta. No se guarda nada."
+    },
+    "guestNote": "La sesión de invitado es local a este navegador y desaparece al cerrar sesión.",
+    "classCode": "Código de clase",
+    "displayName": "Nombre visible",
+    "displayNamePlaceholder": "Cómo te ve la clase",
+    "email": "Correo",
+    "password": "Contraseña",
+    "signIn": "Iniciar sesión",
+    "createAccount": "Crear cuenta",
+    "enterAsGuest": "Entrar como invitado",
+    "needAccount": "¿Aún no tienes cuenta? Crea una",
+    "haveAccount": "¿Ya tienes cuenta? Inicia sesión",
+    "working": "Procesando…",
+    "signOut": "Cerrar sesión",
+    "err": {
+      "providerOff": "Este método aún no está habilitado en Firebase Console → Authentication → Sign-in method.",
+      "badCredentials": "El correo o la contraseña no son correctos.",
+      "emailInUse": "Ese correo ya tiene una cuenta. Inicia sesión.",
+      "weakPassword": "Usa al menos 6 caracteres en la contraseña.",
+      "badEmail": "Ese correo no es válido.",
+      "tooMany": "Demasiados intentos. Espera un momento y reintenta.",
+      "network": "Error de red. Revisa tu conexión y reintenta.",
+      "badCode": "Ese código de clase no coincide. Pídeselo a tu profesor.",
+      "nameRequired": "Escribe un nombre visible.",
+      "unknown": "Algo salió mal. Inténtalo de nuevo.",
+      "joinFailed": "No se pudo entrar a la clase. Revisa tu conexión y el código, e inténtalo de nuevo.",
+      "roomFailed": "No se pudo abrir la sala. Revisa tu conexión e inténtalo de nuevo."
+    },
+    "generateCode": "Generar código de clase",
+    "needCodeFirst": "Genera primero el código de clase",
+    "join": "Entrar a la clase",
+    "studentNote": "Escribe el código que muestra tu profesor y luego el nombre con el que te verá la clase. No necesitas cuenta.",
+    "rosterResetTitle": "Abrir una sala nueva vacía la lista",
+    "rosterResetBody": "Los estudiantes de prueba (Ana, Luis, Camila…) desaparecen y los puntos vuelven a cero. A partir de ahí los estudiantes entran solos con el código, o los agregas tú desde Clase.",
+    "rosterResetConfirm": "Generar código",
+    "cancel": "Cancelar"
+  },
   "map": {
     "aria": "Mapa de la galaxia. Cada isla es un juego.",
-    "hint": "Arrastra para moverte · Rueda o pellizca para zoom · 0 para ver todo · Haz clic en una isla para entrar",
+    "hint": "Arrastra para mover · Rueda o pellizca para acercar · 0 para ver todo · Clic en un planeta para acercarte, otro clic para entrar",
     "loading": "Trazando las estrellas",
     "starMap": "Mapa estelar",
     "collapse": "Ocultar mapa estelar",
@@ -25,14 +77,8 @@
     "gamePlaceholder": "Aquí se abre el juego",
     "back": "Volver al mapa · Esc",
     "shuffle": "Reordenar islas",
-    "shuffleTitle": "Ubicar las islas en otra posición al azar"
-  },
-  "games": {
-    "slot": "Tragamonedas",
-    "roulette": "Ruleta",
-    "blackjack": "Blackjack",
-    "dice": "Dados",
-    "mystery": "Caja misteriosa"
+    "shuffleTitle": "Ubicar las islas en otra posición al azar",
+    "clickToEnter": "Haz clic otra vez para entrar"
   },
   "game": {
     "setup": "Configuración del juego",
@@ -65,7 +111,13 @@
     "newGame": "Nuevo juego",
     "backToMap": "Volver al mapa",
     "continue": "Continuar",
-    "comingSoon": "Este juego viene en camino. Por ahora prueba Jackpot Nebula o Lunar Roulette."
+    "roundLog": "Historial",
+    "roundLogEmpty": "Las rondas aparecen aquí a medida que juegas.",
+    "judgeTitle": "¿Respondió bien?",
+    "judgeCorrect": "Correcto  +{{points}}",
+    "judgeWrong": "Incorrecto  0",
+    "judgePenalty": "Restar  −{{points}}",
+    "watching": "Viendo al profesor"
   },
   "slot": {
     "name": "Tragamonedas",
@@ -176,7 +228,7 @@
     "type_questions": "Preguntas de inglés",
     "type_challenges": "Retos de clase",
     "type_mix": "Mezcla Cósmica Misteriosa",
-    "prompt": "¡Toca una caja misteriosa para invocarla desde el agujero negro!",
+    "prompt": "Barájalas y haz clic en una caja. Algunas guardan premio, otras nada.",
     "opening": "Abriendo caja gravitacional…",
     "boxNumber": "Caja #{{n}}",
     "opened": "Abierta",
@@ -187,6 +239,52 @@
     "prize_points": "¡+{{n}} Puntos Cósmicos!",
     "prize_double": "¡Doble puntos en el siguiente turno!",
     "prize_safe": "¡Inmunidad / Pase Libre!",
-    "prize_star": "¡Medalla de Estrella Dorada!"
+    "prize_star": "¡Medalla de Estrella Dorada!",
+    "shuffle": "Barajar cajas",
+    "shuffling": "Barajando…"
+  },
+  "derby": {
+    "name": "Derbi Estelar",
+    "banner": "Derbi Estelar",
+    "bannerStatus": "En cabeza: {{name}} · Preguntas lanzadas: {{asked}}",
+    "toLobby": "Formar la carrera",
+    "lanes": "Carriles",
+    "lanesHint": "Corren entre 2 y 6 caballos a la vez.",
+    "length": "Distancia",
+    "lengthShort": "Corta",
+    "lengthShortHint": "Unos 20 s",
+    "lengthMedium": "Media",
+    "lengthMediumHint": "Unos 26 s",
+    "lengthLong": "Larga",
+    "lengthLongHint": "Unos 32 s",
+    "modeEliminateHint": "Quien ya ha corrido descansa en las siguientes.",
+    "answerPoints": "Puntos por respuesta correcta",
+    "answerPointsHint": "También marca el tamaño del impulso: más puntos, más terreno ganado.",
+    "winPoints": "Puntos por ganar la carrera",
+    "betting": "Apuestas",
+    "bettingHint": "Los alumnos que no corren eligen caballo. Se cierran en la cuenta atrás.",
+    "bettingOn": "Sí",
+    "bettingOff": "No",
+    "betPoints": "Puntos por acertar el ganador",
+    "lobbyTitle": "En la salida",
+    "start": "Abrir las puertas",
+    "redraw": "Sortear de nuevo",
+    "field": "Los jinetes",
+    "fieldHint": "Sorteados al azar. Toca un jinete para cambiarlo por otro.",
+    "betsTitle": "Apostadores",
+    "betsHint": "Selecciona alumnos y toca el caballo al que apuestan.",
+    "statusRunning": "En carrera",
+    "statusQuestion": "Carrera congelada",
+    "ask": "Lanzar pregunta",
+    "questionKicker": "La carrera está congelada",
+    "noAnswer": "Nadie respondió — continuar",
+    "answered": "Respondió {{name}}",
+    "photoFinish": "Photo finish",
+    "confirmPayout": "Repartir los puntos",
+    "raceAgain": "Otra carrera",
+    "backersWin": "{{count}} apostador(es) acertaron: +{{points}} cada uno",
+    "backersNone": "Nadie apostó por el ganador.",
+    "backersPaid": "{{count}} apostador(es) +{{points}}",
+    "raceWon": "{{name}} ganó el derbi"
   }
 }

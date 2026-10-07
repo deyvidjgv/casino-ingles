@@ -35,10 +35,6 @@
   gap: 10px;
 }
 
-.rc-cm-icon {
-  font-size: 22px;
-}
-
 .rc-cm-title h2 {
   margin: 0;
   font-family: var(--font-display);
@@ -190,6 +186,11 @@
 }
 
 .rc-cm-del-btn {
+  flex: 0 0 auto;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
   background: none;
   border: 0;
   cursor: pointer;

@@ -1,15 +1,15 @@
 // Lunar Roulette. Before each spin the players take random seats; then a pocket is drawn (crypto,
 // uniform over ALL pockets — empty ones are "safe spots"). The wheel and ball tweens are solved so
-// the ball comes to rest in that pocket.
-import { useEffect, useMemo, useRef, useState } from 'react';
+// the ball comes to rest in that pocket, hopping off the deflectors on the way down.
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useTranslation } from 'react-i18next';
 import { useClassStore } from '../../store/classStore';
 import { randomInt, shuffled } from '../../lib/random';
 import { fillTemplate } from '../../lib/template';
 import { sfx } from '../../lib/sfx';
-import { CommonSetup, Field, GameShell, Notice, Panel, PhraseField, ResultOverlay, Segmented, Stepper, Summary, type RoundLog } from '../shared/ui';
-import { useIslandConfig, useLocalized, usePool } from '../shared/hooks';
+import { AnswerJudge, CommonSetup, Field, GameShell, Notice, Panel, PhraseField, Segmented, Stepper, Summary, type RoundLog } from '../shared/ui';
+import { useIslandConfig, useJudgedAward, useLocalized, usePool } from '../shared/hooks';
 import type { GameProps, Localized, PlayMode } from '../types';
 import './roulette.css';
 
@@ -40,6 +40,13 @@ interface Entry { id: string; label: string; isStudent: boolean }
 // wheel geometry (SVG units, centre at 0,0)
 const R_RIM = 492, R_TRACK = 426, R_POCKET_OUT = 398, R_NUM = 378, R_NAME = 306, R_POCKET_IN = 246, R_BALL_REST = 372;
 const LAND_AT = 0.86;   // share of the spin after which the ball sits in its pocket
+// Deflectors ("diamonds") on the track. The ball hops off them on the way down, exactly as
+// on a real wheel — and both the hop and the sideways scatter decay to zero at landing, so
+// the pocket drawn before the spin is still the pocket it rests in.
+const DEFLECTORS = 8;
+const R_DEFLECTOR = 410;
+const HOP_MAX = 34;      // px the ball kicks back up off a deflector
+const SCATTER_DEG = 5.5; // degrees it is thrown sideways, biggest early
 
 const polar = (deg: number, r: number) => {
   const a = (deg * Math.PI) / 180;
@@ -54,6 +61,12 @@ function sectorPath(i: number, step: number, r0: number, r1: number) {
 
 const short = (s: string, max = 12) => (s.length > max ? `${s.slice(0, max - 1)}…` : s);
 const easeOut = (t: number, pow: number) => 1 - Math.pow(1 - t, pow);
+/** Height of the ball above the track as it clatters down, decaying to 0. */
+const hop = (s: number) => (s <= 0 || s >= 1 ? 0
+  : Math.abs(Math.sin(s * Math.PI * DEFLECTORS)) * HOP_MAX * Math.pow(1 - s, 1.7));
+/** Sideways kick off each deflector, also decaying to 0 so the target still wins. */
+const scatter = (s: number) => (s <= 0 || s >= 1 ? 0
+  : Math.sin(s * Math.PI * DEFLECTORS * 2) * SCATTER_DEG * Math.pow(1 - s, 2.2));
 function bounceOut(t: number) {
   const n = 7.5625, d = 2.75;
   if (t < 1 / d) return n * t * t;
@@ -66,7 +79,7 @@ export function RouletteGame({ island, onExit }: GameProps) {
   const { t } = useTranslation();
   const { lang, pick } = useLocalized();
   const allStudents = useClassStore(s => s.students), topics = useClassStore(s => s.topics);
-  const addPoints = useClassStore(s => s.addPoints), addHistory = useClassStore(s => s.addHistory);
+  const addHistory = useClassStore(s => s.addHistory);
 
   const [config, setConfig] = useIslandConfig<RouletteConfig>(island.id, DEFAULTS);
   const [draft, setDraft] = useState(config);
@@ -76,6 +89,11 @@ export function RouletteGame({ island, onExit }: GameProps) {
   const entries: Entry[] = useMemo(() => (config.source === 'students'
     ? allStudents.filter(s => s.active).map(s => ({ id: s.id, label: s.name, isStudent: true }))
     : topics.map(x => ({ id: x.id, label: x.text, isStudent: false }))), [config.source, allStudents, topics]);
+  const onSettled = useCallback((entry: RoundLog, points: number, studentIds: string[]) => {
+    addHistory({ islandId: island.id, game: 'roulette', summary: entry.text, studentIds, points, saved: entry.saved });
+    setRounds(r => [...r, entry]);
+  }, [addHistory, island.id]);
+  const { pending, setPending, judge } = useJudgedAward(onSettled);
   const pool = usePool(entries, config.mode);
   const pockets = Math.max(config.pockets, entries.length);
   const step = 360 / pockets;
@@ -83,9 +101,27 @@ export function RouletteGame({ island, onExit }: GameProps) {
   const [seats, setSeats] = useState<(Entry | null)[]>(() => Array(pockets).fill(null));
   const [spinning, setSpinning] = useState(false);
   const [landed, setLanded] = useState<number | null>(null);
-  const [result, setResult] = useState<{ text: string; kicker: string; chips: string[]; saved: boolean; burst: number } | null>(null);
 
   const wheelRef = useRef<SVGGElement>(null);
+  // 37 sector paths, label positions and font sizes were recomputed on every render —
+  // including every re-render caused by the round log or the verdict bar. They only depend
+  // on the pocket count, so they are built once.
+  const geometry = useMemo(() => {
+    const list = Array.from({ length: pockets }, (_, i) => ({
+      i,
+      path: sectorPath(i, step, R_POCKET_IN, R_POCKET_OUT),
+      fill: i === 0 ? '#b8860b' : i % 2 ? '#F72585' : '#1A1E4A',
+      num: polar(i * step, R_NUM),
+      numRot: '',
+      nameRot: `rotate(${i * step}) translate(0 ${-R_NAME}) rotate(-90)`,
+    }));
+    list.forEach(g => { g.numRot = `rotate(${g.i * step} ${g.num.x} ${g.num.y})`; });
+    return Object.assign(list, {
+      numSize: Math.min(26, Math.max(12, ((2 * Math.PI * R_NUM) / pockets) * 0.42)),
+      nameSize: Math.min(20, Math.max(10, ((2 * Math.PI * R_NAME) / pockets) * 0.36)),
+    });
+  }, [pockets, step]);
+
   const ballRef = useRef<SVGGElement>(null);
   const wheelAngle = useRef(0);
   const ballState = useRef({ angle: 0, r: R_TRACK });
@@ -135,7 +171,6 @@ export function RouletteGame({ island, onExit }: GameProps) {
     let lastPocket = Math.floor(rel0 / step), bounced = 0;
     setSpinning(true);
     setLanded(null);
-    setResult(null);
     sfx.whoosh();
     const prog = { p: 0 };
     tweenRef.current = gsap.to(prog, {
@@ -147,13 +182,19 @@ export function RouletteGame({ island, onExit }: GameProps) {
         const bs = ballState.current;
         bs.angle = wheelAngle.current + rel;
         const s = Math.min(1, Math.max(0, (p - 0.55) / (LAND_AT - 0.55)));
-        bs.r = drop.from + (drop.to - drop.from) * (reduced ? s : bounceOut(s));
+        const fall = drop.from + (drop.to - drop.from) * (reduced ? s : bounceOut(s));
+        if (reduced) {
+          bs.r = fall;
+        } else {
+          bs.r = fall + hop(s);
+          bs.angle += scatter(s);
+        }
         place();
-        // pocket-edge clicks while the ball rolls, clacks on each bounce
+        // pocket-edge clicks while the ball rolls, a clack each time it strikes a deflector
         const pk = Math.floor(rel / step);
         if (pk !== lastPocket && q < 1) { lastPocket = pk; if (p > 0.3) sfx.tick(); }
-        const bounces = [0.36, 0.73, 0.91];
-        if (bounced < bounces.length && s >= bounces[bounced]) { bounced++; sfx.ballClack(); }
+        const strike = Math.floor(s * DEFLECTORS);
+        if (!reduced && s > 0 && s < 1 && strike > bounced) { bounced = strike; sfx.ballClack(); }
       },
       onComplete: () => land(target, winner),
     });
@@ -170,27 +211,23 @@ export function RouletteGame({ island, onExit }: GameProps) {
       sfx.saved();
       setRounds(r => [...r, { text: `#${target} — ${text}`, saved: true }]);
       addHistory({ islandId: island.id, game: 'roulette', summary: `#${target} ${text}`, studentIds: [], points: 0, saved: true });
-      setResult({ text, kicker: t('roulette.freeNumber', { n: target }), chips: [], saved: true, burst: Date.now() });
       return;
     }
     const text = fillTemplate(pick(config.winner), { winner: winner.label });
     const ids = winner.isStudent ? [winner.id] : [];
-    if (ids.length) addPoints(ids, config.points);
     if (config.mode === 'eliminate') pool.markUsed([winner.id]);
-    addHistory({ islandId: island.id, game: 'roulette', summary: text, studentIds: ids, points: ids.length ? config.points : 0 });
-    setRounds(r => [...r, { text }]);
     sfx.win();
-    setResult({
-      text, kicker: t('roulette.number', { n: target }), saved: false, burst: Date.now(),
-      chips: ids.length && config.points ? [`${winner.label} +${config.points}`] : [],
-    });
+    if (ids.length) {
+      setPending({ studentIds: ids, names: [winner.label], points: config.points, summary: `#${target} — ${text}` });
+    } else {
+      onSettled({ text: `#${target} — ${text}`, chips: [] }, 0, []);
+    }
   }
 
   function startGame(next: RouletteConfig) {
     setConfig(next);
     pool.reset();
     setRounds([]);
-    setResult(null);
     setLanded(null);
     setPhase('play');
   }
@@ -198,7 +235,6 @@ export function RouletteGame({ island, onExit }: GameProps) {
   function endGame() {
     tweenRef.current?.kill();
     setSpinning(false);
-    setResult(null);
     setPhase('summary');
   }
 
@@ -211,7 +247,9 @@ export function RouletteGame({ island, onExit }: GameProps) {
   return (
     <GameShell island={island} title={t('roulette.name')} status={status} onExit={onExit}
       onSettings={phase === 'play' && !spinning ? () => { setDraft(config); setPhase('setup'); } : undefined}
-      onEnd={phase === 'play' && !spinning ? endGame : undefined}>
+      onEnd={phase === 'play' && !spinning ? endGame : undefined}
+      history={phase === 'play' ? rounds : undefined}
+      fit={phase === 'play'}>
 
       {phase === 'setup' && (
         <Panel title={t('game.setup')} footer={
@@ -272,18 +310,15 @@ export function RouletteGame({ island, onExit }: GameProps) {
               {/* rotating wheel */}
               <g ref={wheelRef}>
                 <circle r={R_POCKET_OUT + 6} fill="#FFD166" />
-                {Array.from({ length: pockets }, (_, i) => {
-                  const seat = seats[i], isWin = landed === i;
-                  const fill = i === 0 ? '#b8860b' : i % 2 ? '#F72585' : '#1A1E4A';
-                  const num = polar(i * step, R_NUM), nameSize = Math.min(20, Math.max(10, (2 * Math.PI * R_NAME) / pockets * 0.36));
+                {geometry.map(g => {
+                  const seat = seats[g.i], isWin = landed === g.i;
                   return (
-                    <g key={i} className={`rl-pocket ${seat ? 'has-seat' : 'is-free'} ${isWin ? 'is-win' : ''}`}>
-                      <path d={sectorPath(i, step, R_POCKET_IN, R_POCKET_OUT)} fill={fill} stroke="#FFD166" strokeWidth="2" />
-                      {isWin && <path d={sectorPath(i, step, R_POCKET_IN, R_POCKET_OUT)} className="rl-win-glow" />}
-                      <text className="rl-num" x={num.x} y={num.y} transform={`rotate(${i * step} ${num.x} ${num.y})`}
-                        fontSize={Math.min(26, Math.max(12, (2 * Math.PI * R_NUM) / pockets * 0.42))}>{i}</text>
+                    <g key={g.i} className={`rl-pocket ${seat ? 'has-seat' : 'is-free'} ${isWin ? 'is-win' : ''}`}>
+                      <path d={g.path} fill={g.fill} stroke="#FFD166" strokeWidth="2" />
+                      {isWin && <path d={g.path} className="rl-win-glow" />}
+                      <text className="rl-num" x={g.num.x} y={g.num.y} transform={g.numRot} fontSize={geometry.numSize}>{g.i}</text>
                       {seat && (
-                        <text className="rl-name" key={seat.id} transform={`rotate(${i * step}) translate(0 ${-R_NAME}) rotate(-90)`} fontSize={nameSize}>
+                        <text className="rl-name" key={seat.id} transform={g.nameRot} fontSize={geometry.nameSize}>
                           {short(seat.label)}
                         </text>
                       )}
@@ -300,6 +335,20 @@ export function RouletteGame({ island, onExit }: GameProps) {
                 <path d="M0,-58 Q0,0 16,0 Q0,0 0,58 Q0,0 -16,0 Q0,0 0,-58Z" fill="url(#rl-gold)" transform="translate(40 0)" />
               </g>
 
+              {/* deflectors: the diamonds the ball clatters off */}
+              <g className="rl-deflectors" aria-hidden="true">
+                {Array.from({ length: DEFLECTORS }, (_, i) => {
+                  const a = (360 / DEFLECTORS) * i + 22.5;
+                  const c = polar(a, R_DEFLECTOR);
+                  return (
+                    <rect
+                      key={i} x={c.x - 9} y={c.y - 9} width="18" height="18" rx="2"
+                      transform={`rotate(${a + 45} ${c.x} ${c.y})`}
+                    />
+                  );
+                })}
+              </g>
+
               {/* ball */}
               <g ref={ballRef} className="rl-ball">
                 <circle r="30" fill="#4CC9F0" opacity="0.45" filter="url(#rl-glow)" />
@@ -311,7 +360,9 @@ export function RouletteGame({ island, onExit }: GameProps) {
           </div>
 
           <aside className="rl-side">
-            {blocker && !spinning ? (
+            {pending ? (
+              <AnswerJudge names={pending.names} points={pending.points} summary={pending.summary} onJudge={judge} />
+            ) : blocker && !spinning ? (
               <Notice text={blocker} action={config.mode === 'eliminate' && entries.length
                 ? <button type="button" className="rc-cut gm-btn" onClick={pool.reset}>{t('game.restartRound')}</button> : undefined} />
             ) : (
@@ -320,26 +371,12 @@ export function RouletteGame({ island, onExit }: GameProps) {
               </button>
             )}
             <div className="rl-odds">{t('roulette.oddsNow', { count: pool.available.length, pockets })}</div>
-            {!!rounds.length && (
-              <ol className="rl-log" reversed>
-                {[...rounds].reverse().slice(0, 6).map((r, i) => <li key={i} className={r.saved ? 'is-saved' : ''}>{r.text}</li>)}
-              </ol>
-            )}
           </aside>
         </div>
       )}
 
       {phase === 'summary' && <Summary rounds={rounds} onNew={() => { setDraft(config); setPhase('setup'); }} onExit={onExit} />}
 
-      {result && (
-        <ResultOverlay island={island} kicker={result.kicker} text={result.text} burstKey={result.burst}
-          tone={result.saved ? 'saved' : 'win'} chips={result.chips.map(label => ({ label }))}
-          actions={<>
-            <button type="button" className="rc-cut gm-btn gm-btn-primary" disabled={!!blocker && !result.saved}
-              onClick={() => { setResult(null); spin(); }}>{t('roulette.spinAgain')}</button>
-            <button type="button" className="rc-cut gm-btn" onClick={() => setResult(null)}>{t('game.continue')}</button>
-          </>} />
-      )}
     </GameShell>
   );
 }

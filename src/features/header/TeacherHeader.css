@@ -1,32 +1,27 @@
 .rc-teacher-hdr {
   position: absolute;
-  top: 12px;
-  left: 16px;
-  right: 16px;
+  top: var(--hud-gap);
+  left: var(--hud-gap);
+  right: var(--hud-gap);
   z-index: 20;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  pointer-events: auto;
+  gap: 10px;
+  pointer-events: none;
 }
 
 .rc-hdr-left,
 .rc-hdr-right {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.rc-logo {
-  display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-right: 6px;
+  pointer-events: auto;
 }
 
-.rc-logo-icon {
-  font-size: 22px;
-}
+.rc-hdr-left { min-width: 0; }
+.rc-hdr-right { justify-content: flex-end; }
 
 .rc-logo-text {
   font-family: var(--font-display);
@@ -34,19 +29,25 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
   background: linear-gradient(90deg, var(--star-cyan), var(--text-main));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 16px rgba(76, 201, 240, 0.5);
+  margin-right: 4px;
 }
 
 .rc-course-badge {
   --cut: 8px;
-  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hud-control-h);
+  padding: 0 14px;
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.06em;
+  white-space: nowrap;
   color: var(--gold-jackpot);
   border-left: 2px solid var(--gold-jackpot);
 }
@@ -55,14 +56,33 @@
   --cut: 8px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  gap: 8px;
+  min-height: var(--hud-control-h);
+  padding: 0 14px;
   cursor: pointer;
   position: relative;
   font-family: var(--font-numbers);
   font-size: 13px;
   letter-spacing: 0.08em;
   color: var(--star-cyan);
+}
+
+.rc-code-gen {
+  --cut: 8px;
+  --edge: rgba(255, 209, 102, 0.85);
+  --fill: rgba(70, 55, 10, 0.9);
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hud-control-h);
+  padding: 0 14px;
+  color: var(--gold-jackpot);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .rc-code-chip:hover {
@@ -85,7 +105,7 @@
 
 .rc-copied-toast {
   position: absolute;
-  bottom: -28px;
+  bottom: -26px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--success);
@@ -106,14 +126,14 @@
 
 .rc-hdr-btn {
   --cut: 8px;
-  padding: 6px 12px;
-  min-height: 36px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  min-height: var(--hud-control-h);
+  padding: 0 13px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
   color: var(--text-main);
   cursor: pointer;
 }
@@ -126,16 +146,17 @@
 
 .rc-btn-live {
   --cut: 8px;
-  padding: 6px 16px;
-  min-height: 36px;
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--text-main);
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: var(--hud-control-h);
+  padding: 0 15px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  white-space: nowrap;
+  color: var(--text-main);
   cursor: pointer;
 }
 
@@ -170,7 +191,123 @@
   --fill: rgba(70, 55, 10, 0.85);
 }
 
-@media (max-width: 900px) {
+/* ---------- signed-in user ---------- */
+.rc-user-chip {
+  --cut: 8px;
+  --edge: rgba(123, 47, 247, 0.55);
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: var(--hud-control-h);
+  padding: 0 12px;
+  max-width: 240px;
+}
+
+.rc-user-name {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-user-role {
+  font-family: var(--font-numbers);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--space-deep);
+  background: var(--star-cyan);
+  padding: 2px 6px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.rc-user-out {
+  border: 0;
+  background: none;
+  padding: 0 0 0 2px;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rc-user-out:hover {
+  color: var(--danger);
+  text-decoration: underline;
+}
+
+@media (max-width: 1180px) {
   .rc-logo-text { display: none; }
+}
+
+@media (max-width: 980px) {
   .rc-course-badge { display: none; }
+  .rc-user-role { display: none; }
+}
+
+@media (max-width: 720px) {
+  .rc-user-name { display: none; }
+  .rc-user-chip { max-width: none; }
+}
+
+/* ---------- new-room confirmation ---------- */
+.rc-room-alert-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(6, 8, 26, 0.72);
+  pointer-events: auto;
+}
+
+.rc-room-alert {
+  --cut: 16px;
+  --edge: rgba(255, 209, 102, 0.6);
+  --fill: rgba(16, 19, 56, 0.97);
+  max-width: 460px;
+  padding: 26px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.rc-room-alert h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--gold-jackpot);
+}
+
+.rc-room-alert p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.rc-room-alert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.rc-room-go {
+  --edge: rgba(255, 209, 102, 0.9);
+  --fill: rgba(70, 55, 10, 0.9);
+  color: var(--gold-jackpot);
+}
+
+.rc-room-alert-error {
+  color: var(--danger);
+  font-size: 12.5px;
 }

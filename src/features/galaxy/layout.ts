@@ -20,8 +20,3 @@ export function waveIslands(islands: IslandDef[]): IslandDef[] {
     y: i % 2 === 0 ? Y_UP : Y_DOWN,
   }));
 }
-
-/** Legacy alias: always uses clean deterministic wave layout */
-export function scatterIslands(islands: IslandDef[], _seed?: number, _worldScreens?: number): IslandDef[] {
-  return waveIslands(islands);
-}

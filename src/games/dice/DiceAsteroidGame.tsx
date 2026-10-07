@@ -1,24 +1,24 @@
 // Dice Asteroid — 3D Crystal Dice Rolling on an Asteroid Surface.
 // Crypto-first randomness with mathematically precise 3D GSAP landing.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useTranslation } from 'react-i18next';
 import { useClassStore } from '../../store/classStore';
 import { pickDistinct, randomInt } from '../../lib/random';
 import { sfx } from '../../lib/sfx';
 import {
+  AnswerJudge,
   CommonSetup,
   Field,
   GameShell,
   Notice,
   Panel,
-  ResultOverlay,
   Segmented,
   Stepper,
   Summary,
   type RoundLog,
 } from '../shared/ui';
-import { useIslandConfig, useLocalized, usePool } from '../shared/hooks';
+import { useIslandConfig, useJudgedAward, useLocalized, usePool } from '../shared/hooks';
 import type { GameProps, PlayMode } from '../types';
 import './dice.css';
 
@@ -71,7 +71,6 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
   const allStudents = useClassStore(s => s.students);
   const topics = useClassStore(s => s.topics);
   const questions = useClassStore(s => s.questions);
-  const addPoints = useClassStore(s => s.addPoints);
   const addHistory = useClassStore(s => s.addHistory);
 
   const students = useMemo(() => allStudents.filter(s => s.active), [allStudents]);
@@ -82,6 +81,12 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
 
   const pool = usePool(students, config.mode);
 
+  const onSettled = useCallback((entry: RoundLog, points: number, studentIds: string[]) => {
+    addHistory({ islandId: island.id, game: 'dice', summary: entry.text, studentIds, points });
+    setRounds(r => [...r, entry]);
+  }, [addHistory, island.id]);
+  const { pending, setPending, judge } = useJudgedAward(onSettled);
+
   const studentDiceCount = config.diceKinds.filter(k => k === 'student').length;
   const blocker = studentDiceCount > 0 && students.length < studentDiceCount
     ? t('game.notEnoughStudents')
@@ -89,16 +94,13 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
     ? t('game.allPlayed')
     : null;
 
-  // Dice faces and landing state
   const [diceFaces, setDiceFaces] = useState<FaceData[][]>([]);
   const [rolling, setRolling] = useState(false);
-  const [result, setResult] = useState<{ text: string; chips: string[]; burst: number } | null>(null);
 
   const cubeRefs = useRef<(HTMLDivElement | null)[]>([]);
   const impactRef = useRef<HTMLDivElement>(null);
   const rotState = useRef<{ rx: number; ry: number }[]>([]);
 
-  // Build faces for each die
   const generateFacesForDie = (kind: DieKind, dieIdx: number, chosenStudents: typeof students): FaceData[] => {
     if (kind === 'student') {
       const poolCopy = [...pool.available];
@@ -157,8 +159,6 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
   function rollDice() {
     if (rolling || blocker) return;
     setRolling(true);
-    setResult(null);
-
     // 1. CRYPTO-FIRST: decide target face index for each die BEFORE animation starts
     const chosenStudents = pickDistinct(pool.available, studentDiceCount);
     let stCount = 0;
@@ -175,7 +175,6 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
     sfx.whoosh();
     sfx.diceRoll();
 
-    // GSAP 3D Rolling Animation
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const duration = reduced ? 1.0 : 2.4;
 
@@ -198,7 +197,6 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
       const targetRy = targetBase.ry + extraSpinsY;
       rotState.current[i] = { rx: targetRx % 360, ry: targetRy % 360 };
 
-      // Bounce & tumble animation
       tl.fromTo(
         el,
         {
@@ -225,7 +223,6 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
       );
     });
 
-    // Impact flash
     if (impactRef.current) {
       tl.to(
         impactRef.current,
@@ -249,40 +246,25 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
 
     const bonusPointsItem = landed.find(f => f.pointsDelta !== undefined);
     const extraPoints = bonusPointsItem?.pointsDelta || 0;
-    const totalPointsAwarded = config.points + extraPoints;
+    const pointsAtStake = config.points + extraPoints;
 
-    if (studentIds.length && totalPointsAwarded > 0) {
-      addPoints(studentIds, totalPointsAwarded);
-    }
     if (config.mode === 'eliminate' && studentIds.length) {
       pool.markUsed(studentIds);
     }
 
-    const labels = landed.map(f => f.label);
-    const summaryText = labels.join(' · ');
-
-    addHistory({
-      islandId: island.id,
-      game: 'dice',
-      summary: summaryText,
-      studentIds,
-      points: totalPointsAwarded,
-    });
-    setRounds(r => [...r, { text: summaryText }]);
+    const summaryText = landed.map(f => f.label).join(' · ');
     sfx.win();
-
-    setResult({
-      text: summaryText,
-      chips: studentNames.map(name => `${name} +${totalPointsAwarded}`),
-      burst: Date.now(),
-    });
+    if (studentIds.length) {
+      setPending({ studentIds, names: studentNames, points: pointsAtStake, summary: summaryText });
+    } else {
+      onSettled({ text: summaryText, chips: [] }, 0, []);
+    }
   }
 
   function startGame(next: DiceConfig) {
     setConfig(next);
     pool.reset();
     setRounds([]);
-    setResult(null);
     setPhase('play');
   }
 
@@ -308,6 +290,8 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
       onExit={onExit}
       onSettings={phase === 'play' && !rolling ? () => { setDraft(config); setPhase('setup'); } : undefined}
       onEnd={phase === 'play' && !rolling ? () => setPhase('summary') : undefined}
+      history={phase === 'play' ? rounds : undefined}
+      fit={phase === 'play'}
     >
       {phase === 'setup' && (
         <Panel
@@ -481,7 +465,9 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
           </div>
 
           <div className="dc-controls">
-            {blocker && !rolling ? (
+            {pending ? (
+              <AnswerJudge names={pending.names} points={pending.points} summary={pending.summary} onJudge={judge} />
+            ) : blocker && !rolling ? (
               <Notice
                 text={blocker}
                 action={
@@ -514,32 +500,6 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
         />
       )}
 
-      {result && (
-        <ResultOverlay
-          island={island}
-          kicker={t('dice.resultKicker')}
-          text={result.text}
-          burstKey={result.burst}
-          chips={result.chips.map(label => ({ label }))}
-          actions={
-            <>
-              <button
-                type="button"
-                className="rc-cut gm-btn gm-btn-primary"
-                onClick={() => {
-                  setResult(null);
-                  rollDice();
-                }}
-              >
-                {t('dice.rollAgain')}
-              </button>
-              <button type="button" className="rc-cut gm-btn" onClick={() => setResult(null)}>
-                {t('game.continue')}
-              </button>
-            </>
-          }
-        />
-      )}
     </GameShell>
   );
 }

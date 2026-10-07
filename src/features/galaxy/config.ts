@@ -9,9 +9,10 @@ export const COLORS = {
   cyan: '#4CC9F0',
   gold: '#FFD166',
   white: '#F1F3FF',
+  emerald: '#12C06A',
 } as const;
 
-export type GameType = 'slot' | 'roulette' | 'blackjack' | 'dice' | 'mystery';
+export type GameType = 'slot' | 'roulette' | 'blackjack' | 'dice' | 'mystery' | 'derby';
 
 export interface IslandDef {
   id: string;
@@ -44,6 +45,8 @@ export const DEFAULT_ISLANDS: IslandDef[] = [
   { id: 'mystery-black-hole', game: 'mystery', label: 'Mystery Black Hole', x: 0.9, y: 0.36, color: COLORS.gold, accent: COLORS.pink,
     image: '/islands/mystery-black-hole.webp', aspect: 1.492, anchorY: 0.46,
     core: { x: 0.49, y: 0.235, rx: 0.075, ry: 0.052 } },
+  { id: 'derby-track', game: 'derby', label: 'Stellar Derby', x: 0.9, y: 0.64, color: COLORS.emerald, accent: COLORS.gold,
+    image: '/islands/derby-track.webp', aspect: 1.485, anchorY: 0.53 },
 ];
 
 export interface LayerDef {
@@ -74,7 +77,7 @@ export const GALAXY_CONFIG = {
     friction: 0.03, keyStep: 0.4, wheelZoom: 0.0018, buttonZoom: 1.4,
     // screen px kept around the islands in "View all" (side arrows, top hint, bottom HUD + labels)
     fitMarginX: 110, fitMarginTop: 64, fitMarginBottom: 150,
-    introDelay: 1.5,
+    introDelay: 0.35,
   },
   layers: {
     galaxy: { f: 0.05, d: 0.06 }, nebula: { f: 0.12, d: 0.12 }, constellations: { f: 0.22, d: 0.25 },
@@ -124,5 +127,3 @@ export const GALAXY_CONFIG = {
     bob: 0.018,
   },
 };
-
-export type GalaxyConfig = typeof GALAXY_CONFIG;

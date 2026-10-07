@@ -1,23 +1,23 @@
 // Card Comet — Cosmic Blackjack with Card Draw and Real Blackjack modes.
 // Crypto-first randomness with 3D GSAP card flips and interactive English validation.
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useTranslation } from 'react-i18next';
 import { useClassStore } from '../../store/classStore';
 import { pickDistinct, pickOne } from '../../lib/random';
 import { sfx } from '../../lib/sfx';
 import {
+  AnswerJudge,
   CommonSetup,
   Field,
   GameShell,
   Notice,
   Panel,
-  ResultOverlay,
   Segmented,
   Summary,
   type RoundLog,
 } from '../shared/ui';
-import { useIslandConfig, useLocalized, usePool } from '../shared/hooks';
+import { useIslandConfig, useJudgedAward, useLocalized, usePool } from '../shared/hooks';
 import type { GameProps, PlayMode } from '../types';
 import './blackjack.css';
 
@@ -110,6 +110,12 @@ export function CardCometGame({ island, onExit }: GameProps) {
 
   const pool = usePool(students, config.mode);
 
+  const onSettled = useCallback((entry: RoundLog, points: number, studentIds: string[]) => {
+    addHistory({ islandId: island.id, game: 'blackjack', summary: entry.text, studentIds, points });
+    setRounds(r => [...r, entry]);
+  }, [addHistory, island.id]);
+  const { pending, setPending, judge } = useJudgedAward(onSettled);
+
   // Mode A: Card Draw state
   const [drawCards, setDrawCards] = useState<{ card: CardItem; flipped: boolean; kind: string; text: string; studentId?: string }[]>([]);
   const [allFlipped, setAllFlipped] = useState(false);
@@ -124,8 +130,6 @@ export function CardCometGame({ island, onExit }: GameProps) {
   const [turn, setTurn] = useState<'p1' | 'p2' | 'dealer' | 'over'>('p1');
   const [activeQuestion, setActiveQuestion] = useState<{ text: string; forPlayer: string; target: 'p1' | 'p2' } | null>(null);
 
-  // Shared result state
-  const [result, setResult] = useState<{ text: string; kicker: string; chips: string[]; burst: number } | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
 
   const minRequiredStudents = config.gameMode === 'blackjack' ? 2 : config.drawPreset === '3s' ? 3 : config.drawPreset === '2s' ? 2 : 1;
@@ -135,10 +139,8 @@ export function CardCometGame({ island, onExit }: GameProps) {
     ? t('game.allPlayed')
     : null;
 
-  // Initialize Mode A: Card Draw
   function startDrawRound() {
     if (blocker) return;
-    setResult(null);
     setAllFlipped(false);
 
     let cardConfigs: { kind: string; text: string; studentId?: string }[] = [];
@@ -190,23 +192,19 @@ export function CardCometGame({ island, onExit }: GameProps) {
   function flipDrawCard(index: number) {
     if (drawCards[index]?.flipped) return;
     sfx.cardFlip();
-    setDrawCards(prev => {
-      const next = prev.map((c, i) => (i === index ? { ...c, flipped: true } : c));
-      const allDone = next.every(c => c.flipped);
-      if (allDone) {
-        finishDrawRound(next);
-      }
-      return next;
-    });
+    const next = drawCards.map((c, i) => (i === index ? { ...c, flipped: true } : c));
+    setDrawCards(next);
+    // scoring stays outside the state updater: updaters must be pure, and React runs them
+    // twice in development
+    if (next.every(c => c.flipped)) finishDrawRound(next);
   }
 
   function flipAllDrawCards() {
+    if (allFlipped) return;
     sfx.cardFlip();
-    setDrawCards(prev => {
-      const next = prev.map(c => ({ ...c, flipped: true }));
-      finishDrawRound(next);
-      return next;
-    });
+    const next = drawCards.map(c => ({ ...c, flipped: true }));
+    setDrawCards(next);
+    finishDrawRound(next);
   }
 
   function finishDrawRound(cards: typeof drawCards) {
@@ -215,39 +213,25 @@ export function CardCometGame({ island, onExit }: GameProps) {
     const studentIds = studentCards.map(c => c.studentId!);
     const studentNames = studentCards.map(c => c.text);
 
-    if (config.points > 0 && studentIds.length) {
-      addPoints(studentIds, config.points);
-    }
     if (config.mode === 'eliminate' && studentIds.length) {
       pool.markUsed(studentIds);
     }
 
     const summaryText = cards.map(c => `${c.kind}: ${c.text}`).join(' · ');
-    addHistory({
-      islandId: island.id,
-      game: 'blackjack',
-      summary: summaryText,
-      studentIds,
-      points: config.points,
-    });
-    setRounds(r => [...r, { text: summaryText }]);
     sfx.win();
-    setResult({
-      text: studentNames.join(' & ') || summaryText,
-      kicker: t('blackjack.cardsDrawn'),
-      chips: studentNames.map(name => `${name} +${config.points}`),
-      burst: Date.now(),
-    });
+    // the cards only say who is up; the teacher scores the answer
+    if (studentIds.length) {
+      setPending({ studentIds, names: studentNames, points: config.points, summary: summaryText });
+    } else {
+      onSettled({ text: summaryText, chips: [] }, 0, []);
+    }
   }
 
-  // Initialize Mode B: Real Blackjack
   function startBlackjackRound() {
     if (blocker) return;
-    setResult(null);
     setActiveQuestion(null);
     setDealerHoleFlipped(false);
 
-    // Pick 2 players
     const [p1Choice, p2Choice] = pickDistinct(pool.available, 2);
     setP1(p1Choice);
     setP2(p2Choice);
@@ -295,7 +279,6 @@ export function CardCometGame({ island, onExit }: GameProps) {
         setP1Hand(nextHand);
         const score = calculateHand(nextHand);
         if (score >= 21) {
-          // Automatic advance
           setTurn('p2');
         }
       } else {
@@ -303,7 +286,6 @@ export function CardCometGame({ island, onExit }: GameProps) {
         setP2Hand(nextHand);
         const score = calculateHand(nextHand);
         if (score >= 21) {
-          // Automatic advance to dealer
           startDealerTurn();
         }
       }
@@ -332,7 +314,6 @@ export function CardCometGame({ island, onExit }: GameProps) {
     setDealerHoleFlipped(true);
     sfx.cardFlip();
 
-    // Check dealer play loop
     setTimeout(() => {
       let currentHand = [...dealerHand];
       let score = calculateHand(currentHand);
@@ -405,27 +386,23 @@ export function CardCometGame({ island, onExit }: GameProps) {
       studentIds: winningIds,
       points: config.points,
     });
-    setRounds(r => [...r, { text: summaryText }]);
+    setRounds(r => [...r, {
+      text: `${kicker} — ${bannerText}`,
+      saved: !winningIds.length,
+      chips: winningNames.map(name => `${name} +${config.points}`),
+    }]);
 
     if (winningIds.length) {
       sfx.win();
     } else {
       sfx.saved();
     }
-
-    setResult({
-      text: bannerText,
-      kicker,
-      chips: winningNames.map(name => `${name} +${config.points}`),
-      burst: Date.now(),
-    });
   }
 
   function startGame(next: CardCometConfig) {
     setConfig(next);
     pool.reset();
     setRounds([]);
-    setResult(null);
     setPhase('play');
 
     if (next.gameMode === 'draw') {
@@ -451,6 +428,8 @@ export function CardCometGame({ island, onExit }: GameProps) {
       onExit={onExit}
       onSettings={phase === 'play' ? () => { setDraft(config); setPhase('setup'); } : undefined}
       onEnd={phase === 'play' ? () => setPhase('summary') : undefined}
+      history={phase === 'play' ? rounds : undefined}
+      fit={phase === 'play'}
     >
       {phase === 'setup' && (
         <Panel
@@ -502,7 +481,7 @@ export function CardCometGame({ island, onExit }: GameProps) {
 
       {phase === 'play' && (
         <div className="bk-play">
-          <div ref={tableRef} className="bk-table">
+          <div ref={tableRef} className="bk-table gm-texture">
             <div className="bk-felt-arc" />
             <div className="bk-felt-title">Cosmic Orbit Blackjack</div>
 
@@ -532,6 +511,9 @@ export function CardCometGame({ island, onExit }: GameProps) {
                   ))}
                 </div>
 
+                {pending && (
+                  <AnswerJudge names={pending.names} points={pending.points} summary={pending.summary} onJudge={judge} />
+                )}
                 <div className="bk-controls">
                   {!allFlipped && (
                     <button type="button" className="rc-cut gm-btn gm-btn-primary" onClick={flipAllDrawCards}>
@@ -735,33 +717,6 @@ export function CardCometGame({ island, onExit }: GameProps) {
         />
       )}
 
-      {result && (
-        <ResultOverlay
-          island={island}
-          kicker={result.kicker}
-          text={result.text}
-          burstKey={result.burst}
-          chips={result.chips.map(label => ({ label }))}
-          actions={
-            <>
-              <button
-                type="button"
-                className="rc-cut gm-btn gm-btn-primary"
-                onClick={() => {
-                  setResult(null);
-                  if (config.gameMode === 'draw') startDrawRound();
-                  else startBlackjackRound();
-                }}
-              >
-                {t('game.continue')}
-              </button>
-              <button type="button" className="rc-cut gm-btn" onClick={() => setResult(null)}>
-                {t('game.map')}
-              </button>
-            </>
-          }
-        />
-      )}
     </GameShell>
   );
 }

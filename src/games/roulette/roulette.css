@@ -129,3 +129,11 @@
   .rl-win-glow { animation: none; fill-opacity: 0.3; }
   .rl-name { animation: none; }
 }
+
+/* Deflector diamonds: metal studs the ball bounces off. */
+.rl-deflectors rect {
+  fill: #cfd6e6;
+  stroke: rgba(255, 209, 102, 0.85);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 5px rgba(255, 209, 102, 0.55));
+}

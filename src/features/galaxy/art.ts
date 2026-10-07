@@ -66,7 +66,18 @@ export interface Sprites {
   chips: HTMLCanvasElement[];
 }
 
+/** Sprite sheets and the grain tile are identical for every engine instance, and the engine
+ *  is rebuilt on each StrictMode double-mount and whenever the island set changes. Building
+ *  them once per page removes that repeated synchronous work from startup. */
+let spriteCache: Sprites | null = null;
+let grainCache: string | null = null;
+
 export function makeSprites(): Sprites {
+  if (spriteCache) return spriteCache;
+  return (spriteCache = buildSprites());
+}
+
+function buildSprites(): Sprites {
   const glowCache = new Map<string, HTMLCanvasElement>(), softCache = new Map<string, HTMLCanvasElement>();
   const glow = (hex: string) => {
     let s = glowCache.get(hex);
@@ -117,6 +128,11 @@ export function makeSprites(): Sprites {
 }
 
 export function makeGrainURL() {
+  if (grainCache) return grainCache;
+  return (grainCache = buildGrainURL());
+}
+
+function buildGrainURL() {
   const n = 160, c = mkCanvas(n), g = ctx2d(c), d = g.createImageData(n, n);
   for (let i = 0; i < d.data.length; i += 4) {
     const v = Math.random() < 0.5 ? 11 : 241;

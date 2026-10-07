@@ -1,14 +1,66 @@
 {
   "app": {
-    "name": "Random Classroom"
+    "name": "RandomClassroom"
   },
   "lang": {
     "switchTo": "Español",
     "switchAria": "Cambiar a español"
   },
+  "auth": {
+    "brand": "RandomClassroom",
+    "tagline": "Classroom English, played across the galaxy",
+    "chooseRole": "Choose how you enter",
+    "chooseRoleNote": "Your role decides what you can see and control once you are in the galaxy.",
+    "changeRole": "Change role",
+    "role": {
+      "teacher": "Teacher",
+      "student": "Student",
+      "guest": "Guest"
+    },
+    "roleDesc": {
+      "teacher": "Run the class, manage students and topics, award points.",
+      "student": "Join with the class code your teacher shows. No password.",
+      "guest": "Look around without an account. Nothing is saved."
+    },
+    "guestNote": "Guest sessions are local to this browser and disappear when you sign out.",
+    "classCode": "Class code",
+    "displayName": "Display name",
+    "displayNamePlaceholder": "How the class sees you",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "enterAsGuest": "Enter as guest",
+    "needAccount": "No account yet? Create one",
+    "haveAccount": "Already have an account? Sign in",
+    "working": "Working…",
+    "signOut": "Sign out",
+    "err": {
+      "providerOff": "This sign-in method is not enabled yet in Firebase Console → Authentication → Sign-in method.",
+      "badCredentials": "Email or password is incorrect.",
+      "emailInUse": "That email already has an account. Sign in instead.",
+      "weakPassword": "Use at least 6 characters for the password.",
+      "badEmail": "That email address is not valid.",
+      "tooMany": "Too many attempts. Wait a moment and try again.",
+      "network": "Network error. Check your connection and retry.",
+      "badCode": "That class code does not match. Ask your teacher for it.",
+      "nameRequired": "Enter a display name.",
+      "unknown": "Something went wrong. Please try again.",
+      "joinFailed": "Could not join the class. Check your connection and the code, then try again.",
+      "roomFailed": "Could not open the room. Check your connection and try again."
+    },
+    "generateCode": "Generate class code",
+    "needCodeFirst": "Generate the class code first",
+    "join": "Join the class",
+    "studentNote": "Enter the code your teacher is showing, then the name the class will see. No account needed.",
+    "rosterResetTitle": "Opening a new room clears the roster",
+    "rosterResetBody": "The sample students (Ana, Luis, Camila…) disappear and the scores reset to zero. From then on students join themselves with the code, or you add them from Class.",
+    "rosterResetConfirm": "Generate code",
+    "cancel": "Cancel"
+  },
   "map": {
     "aria": "Galaxy map. Each island is a game.",
-    "hint": "Drag to pan · Scroll or pinch to zoom · 0 to view all · Click an island to enter",
+    "hint": "Drag to pan · Scroll or pinch to zoom · 0 to view all · Click an island to approach, click again to enter",
     "loading": "Charting the stars",
     "starMap": "Star map",
     "collapse": "Hide star map",
@@ -25,14 +77,8 @@
     "gamePlaceholder": "The game opens here",
     "back": "Back to map · Esc",
     "shuffle": "Shuffle islands",
-    "shuffleTitle": "Place the islands in a new random layout"
-  },
-  "games": {
-    "slot": "Slot Machine",
-    "roulette": "Roulette",
-    "blackjack": "Blackjack",
-    "dice": "Dice",
-    "mystery": "Mystery Box"
+    "shuffleTitle": "Place the islands in a new random layout",
+    "clickToEnter": "Click again to enter"
   },
   "game": {
     "setup": "Game setup",
@@ -65,7 +111,13 @@
     "newGame": "New game",
     "backToMap": "Back to map",
     "continue": "Continue",
-    "comingSoon": "This game is on its way. Try Jackpot Nebula or Lunar Roulette for now."
+    "roundLog": "Round log",
+    "roundLogEmpty": "Rounds appear here as you play.",
+    "judgeTitle": "Did they answer well?",
+    "judgeCorrect": "Correct  +{{points}}",
+    "judgeWrong": "Incorrect  0",
+    "judgePenalty": "Penalise  −{{points}}",
+    "watching": "Watching the teacher"
   },
   "slot": {
     "name": "Slot Machine",
@@ -176,7 +228,7 @@
     "type_questions": "English Questions",
     "type_challenges": "Fun Challenges",
     "type_mix": "Cosmic Mystery Mix",
-    "prompt": "Click any mystery box to summon it from the black hole!",
+    "prompt": "Shuffle them, then click a box. Some hold a prize, some hold nothing.",
     "opening": "Opening gravitational box…",
     "boxNumber": "Box #{{n}}",
     "opened": "Opened",
@@ -187,6 +239,52 @@
     "prize_points": "+{{n}} Cosmic Points!",
     "prize_double": "Double Points Next Round!",
     "prize_safe": "Immunity / Safe Pass!",
-    "prize_star": "Golden Star Badge!"
+    "prize_star": "Golden Star Badge!",
+    "shuffle": "Shuffle boxes",
+    "shuffling": "Shuffling…"
+  },
+  "derby": {
+    "name": "Stellar Derby",
+    "banner": "Stellar Derby",
+    "bannerStatus": "Leading: {{name}} · Questions asked: {{asked}}",
+    "toLobby": "Set the field",
+    "lanes": "Lanes",
+    "lanesHint": "Between 2 and 6 horses race at a time.",
+    "length": "Race length",
+    "lengthShort": "Short",
+    "lengthShortHint": "About 20 s",
+    "lengthMedium": "Medium",
+    "lengthMediumHint": "About 26 s",
+    "lengthLong": "Long",
+    "lengthLongHint": "About 32 s",
+    "modeEliminateHint": "Whoever has raced sits out the next ones.",
+    "answerPoints": "Points per correct answer",
+    "answerPointsHint": "Also sets how big the boost is: more points, more ground gained.",
+    "winPoints": "Points for winning the race",
+    "betting": "Backing",
+    "bettingHint": "Students who are not racing pick a horse. Betting closes at the countdown.",
+    "bettingOn": "On",
+    "bettingOff": "Off",
+    "betPoints": "Points for backing the winner",
+    "lobbyTitle": "At the gate",
+    "start": "Open the gates",
+    "redraw": "Draw again",
+    "field": "The field",
+    "fieldHint": "Drawn at random. Tap a rider to swap them for someone else.",
+    "betsTitle": "Backers",
+    "betsHint": "Select students, then tap the horse they are backing.",
+    "statusRunning": "Racing",
+    "statusQuestion": "Race frozen",
+    "ask": "Ask a question",
+    "questionKicker": "The race is frozen",
+    "noAnswer": "Nobody answered — resume",
+    "answered": "{{name}} answered",
+    "photoFinish": "Photo finish",
+    "confirmPayout": "Award the points",
+    "raceAgain": "Race again",
+    "backersWin": "{{count}} backer(s) picked the winner: +{{points}} each",
+    "backersNone": "Nobody backed the winner.",
+    "backersPaid": "{{count}} backer(s) +{{points}}",
+    "raceWon": "{{name}} won the derby"
   }
 }
