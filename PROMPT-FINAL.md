@@ -10,7 +10,7 @@ El mundo es una **galaxia con islas flotantes**: cada juego es una isla. El esti
 
 - **React + Vite + TypeScript**.
 - **GSAP** (timelines y easing) para todas las animaciones: cámara del mapa, rodillos, ruleta, bolita, cartas, dados, cajas y transiciones. Framer Motion solo para micro-interacciones de UI, si hace falta.
-- **Firebase**: Authentication, Firestore (tiempo real) y Hosting.
+- **Firebase**: Authentication, Firestore (tiempo real y persistencia), Realtime Database (canales en vivo y presencia de alta frecuencia) y Hosting.
 - **React Router** para navegación, **Zustand** para estado local e **i18next** para idiomas.
 - **Howler.js** para sonidos y música.
 - **DiceBear** para avatares.
@@ -165,45 +165,62 @@ Agregar un juego nuevo = crear un módulo y registrarlo. No se toca el resto de 
 - **Al final:** un cartel grande con la frase configurada y una explosión de partículas estelares.
 - Modo "Eliminate" / "Keep playing".
 
-### 7.2 Lunar Roulette: Roulette
-- **37 casillas por defecto** (0 a 36, como la ruleta real). El profesor puede agregar más.
-- **En cada ronda**, los estudiantes activos se asignan **al azar** a casillas. Las casillas que sobran quedan **libres, mostrando solo su número**.
-- La rueda gira en un sentido y la bolita en el contrario. La bolita frena, rebota y cae en la casilla predeterminada.
-- **Si cae en un estudiante:**
-  - EN: *"The ball has chosen… Ana! Your turn!"*
-  - ES: *"La bolita eligió a… ¡Ana! ¡Es tu turno!"*
-- **Si cae en una casilla libre (salvación):**
-  - EN: *"Lucky escape! Nobody plays this round — spin again!"*
-  - ES: *"¡Salvados! Nadie juega esta ronda — ¡gira otra vez!"*
-  - El profesor vuelve a girar.
-- **Modos:**
-  - "Eliminate": el elegido sale de la ruleta y su casilla queda libre.
-  - "Keep playing": el elegido se queda y puede volver a salir.
-- Modo **students** o **topics**.
-- Diseño: estética de anillo planetario, casillas alternadas en rosa y azul noche, borde dorado y bolita blanca con estela cyan.
+### 7.2 Lunar Roulette: Roulette (Dos modos seleccionables)
+- **Modo A, "Selector Wheel" (Ruleta de Selección):**
+  - Cada sección de la ruleta representa directamente a un estudiante o tema del grupo activo.
+  - La cantidad de casillas se adapta dinámicamente al tamaño del pool activo (no hay números vacíos ni safe spots).
+  - Puntero superior con efecto tick por sección. En modo "Eliminate", el estudiante elegido es retirado de la ruleta en los siguientes giros.
+- **Modo B, "Real Casino Roulette" (Ruleta Europea Real):**
+  - 37 casillas en orden oficial europeo: `0` (verde) y 1 al 36 (rojos y negros).
+  - Mesa de apuestas interactiva: el estudiante/profesor puede apostar a Color (Rojo/Negro, paga 1x), Paridad (Par/Impar, paga 1x), Rango (1-18 / 19-36, paga 1x), Docenas (1ª, 2ª, 3ª 12, paga 2x) o Número exacto (paga 5x).
+  - Física de bolita en contragiro con rebote en deflectores; aleatoriedad 100% crypto (`randomInt`).
+- Diseño: anillo planetario dorado, casillas rosa cósmico y azul noche, bolita blanca con glow cyan.
 
-### 7.3 Card Comet: Blackjack (el profesor elige el modo)
-- **Modo A, "Card Draw":** cartas boca abajo; cada una es un estudiante, una pregunta o un reto. Se voltean con animación 3D.
-- **Modo B, "Real Blackjack":** 2 estudiantes o equipos contra el dealer.
-  - Para pedir carta (*hit*), el estudiante tiene que responder bien una pregunta en inglés. El profesor marca ✔ o ✘.
-  - **Regla "Soft":** si responde mal, no recibe carta y pasa el turno. No pierde lo que ya tiene.
-  - Gana quien quede más cerca de 21 sin pasarse. El ganador recibe los puntos configurados.
-- Diseño: mesa con paño violeta de galaxia (nunca verde), cartas holográficas con bordes cyan.
+### 7.3 Card Comet: Blackjack Cósmico (Dos modos seleccionables)
+- **Zapato de 52 cartas reales sin reemplazo:** Barajado con crypto; se regenera cuando quedan menos de 10 cartas.
+- **Modo A, "Card Draw":** Cartas holográficas boca abajo para sorteos rápidos con volteo 3D.
+- **Modo B, "Real Blackjack":**
+  - 2 estudiantes compiten contra el Dealer Cósmico.
+  - Petición de carta (*Hit*): requiere que haya preguntas registradas en la clase. El profesor valida con ✔ o ✘.
+  - **Regla Soft:** Si responde mal, no roba carta y pasa el turno de forma segura sin perder sus cartas previas.
+  - **Natural Blackjack:** Si un estudiante recibe 21 en el reparto inicial, pasa automáticamente su turno hacia el dealer para no quedar atrapado.
+  - Turnos gestionados sin cierres obsoletos (evitando desincronización de estado en React).
+  - En modo "Eliminate", ambos estudiantes participantes completan su turno y quedan marcados como jugados.
 
-### 7.4 Dice Asteroid: Dice
-- Uno a tres dados gigantes de cristal. El profesor asigna qué significa cada cara: un estudiante, un reto, un tema o un número de puntos.
-- Tirada con animación 3D (rebote y giro) que termina en la cara predeterminada.
-- Los dados siempre son cubos perfectos con puntos (pips) correctos.
+### 7.4 Dice Asteroid: Dados de Cristal 3D
+- Uno a tres dados gigantes de cristal sobre el asteroide.
+- Rotación continua y progresiva (sin saltos visuales ni reseteos bruscos con `% 360` entre tiradas).
+- **Garantía de estudiantes distintos:** En tiradas de 2 o 3 dados de estudiantes, se asegura con `pickDistinct` que cada dado caiga en un estudiante diferente (sin duplicados en la misma tirada).
+- Intervalos de audio blindados con limpieza automática para evitar fugas de memoria al desmontar.
 
-### 7.5 Mystery Black Hole: Mystery Box
-- Del agujero negro salen cajas de regalo flotando. El profesor define el contenido: premios, retos, preguntas o estudiantes.
-- El profesor (o el estudiante elegido) toca una caja; esta tiembla, se abre con un estallido de luz dorada y cyan, y revela el contenido.
-- Modo "Eliminate" (la caja ya abierta desaparece) o "Keep playing".
+### 7.5 Mystery Black Hole: Cajas de Singularidad
+- Cajas flotantes con física gravitacional sobre el agujero negro.
+- **Identificadores únicos por caja:** El estado de apertura y revelación se enlaza con el ID inmutable de cada caja, no por índice de arreglo.
+- **Cierre garantizado:** Al hacer *shuffle*, todas las cajas abiertas se cierran con animación antes de mezclarse. Ninguna caja se mezcla abierta ni mostrando su contenido.
+- Modo "Eliminate": las cajas abiertas se retiran del agujero negro.
 
-### 7.6 Juegos futuros (opcionales, mismo sistema de módulos)
-- Wheel of Orion (rueda de temas)
-- Team Warp Station (armar equipos al azar)
-- Meteor Shower (eliminación de nombres por meteoritos)
+### 7.6 Stellar Derby: Carrera Multijugador en Tiempo Real (Firebase RTDB)
+- **Multijugador real aula-estudiantes:**
+  - El profesor proyecta la pista en pantalla gigante (`Track.tsx`).
+  - Los estudiantes corren desde sus propios teléfonos móviles o computadores (`DerbyPlayerView.tsx`).
+  - También cuenta con modo "Un solo dispositivo" con teclas 1 a 6 (ignorando `e.repeat`) y botones táctiles en pantalla del profesor.
+- **Autoridad del profesor:**
+  - El dispositivo del profesor es la única autoridad de la física y cálculo de posiciones.
+  - El estudiante solo envía su contador acumulado de taps throttled (~150 ms).
+  - El profesor aplica la diferencia limitada a 10 taps por segundo (`MIN_TAP_MS`). Taps fuera de fase `running` no cuentan.
+- **Canal en vivo en Realtime Database:**
+  - `/presence/{courseId}/{uid}`: Presencia con `onDisconnect().remove()`.
+  - `/races/{courseId}/state`: Fase (lobby, countdown, running, question, finish, closed), lista de jinetes, checkpoints y pregunta.
+  - `/races/{courseId}/positions`: Progreso publicado por el profesor a ~8 Hz.
+  - `/races/{courseId}/taps/{uid}`: Contadores acumulados de los jinetes.
+  - `/races/{courseId}/hands/{uid}`: Manos levantadas durante las preguntas.
+  - `/races/{courseId}/bets/{uid}`: Apuestas de los espectadores.
+- **Preguntas pedagógicas durante la carrera:**
+  - Manuales (tecla Q o botón) o automáticas en checkpoints (25%, 50%, 75% del líder).
+  - Congelan la carrera en todos los dispositivos. Los estudiantes pueden pulsar "Raise Hand" en su pantalla.
+  - El profesor elige quién responde y juzga con ✔ o ✘. La respuesta correcta otorga turbo y puntos al jinete.
+  - Reanudación sincronizada con cuenta regresiva. Desempate sin truncar progreso (foto-finish).
+  - Payout protegido por `paidRef` para evitar duplicación de puntos.
 
 ---
 

@@ -1,6 +1,5 @@
-// Stellar Derby — a Greek hippodrome where the class races. Tapping keeps a horse moving, but
-// the race is decided by English: the teacher freezes it, asks a question, and the answer buys
-// a boost. Points are only ever awarded by the teacher, the same as in every other island.
+// Stellar Derby — a Greek hippodrome where the class races.
+// Tapping keeps a horse moving, but the race is decided by English.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassStore, type Student } from '../../store/classStore';
@@ -13,17 +12,34 @@ import { useIslandConfig, useJudgedAward } from '../shared/hooks';
 import type { GameProps, PlayMode } from '../types';
 import { Track, type Rider } from './Track';
 import { HORSE, HORSE_COLORS, type HorseColor } from './scene';
+import {
+  initServerTimeOffset,
+  getServerTime,
+  publishRaceState,
+  updateRaceState,
+  publishPositions,
+  subscribeStudentTaps,
+  subscribeHands,
+  clearHands,
+  subscribeLiveBets,
+  subscribeRaceState,
+  type LiveRaceState,
+  type LiveRiderInfo,
+  type ControlMode,
+  type QuestionMode,
+} from './derbySync';
+import { subscribeCoursePresence } from '../../lib/presence';
 import './derby.css';
 
-type Phase = 'setup' | 'lobby' | 'countdown' | 'running' | 'question' | 'finish' | 'summary';
+type Phase = 'setup' | 'lobby' | 'countdown' | 'running' | 'question' | 'resumeCountdown' | 'finish' | 'summary';
 type Length = 'short' | 'medium' | 'long';
 
 interface DerbyConfig {
   lanes: number;
   mode: PlayMode;
-  /** points a correct answer is worth; also sets how big the boost is */
+  controlMode: ControlMode;
+  questionMode: QuestionMode;
   points: number;
-  /** points for winning the race */
   winPoints: number;
   length: Length;
   betting: boolean;
@@ -31,22 +47,17 @@ interface DerbyConfig {
 }
 
 const DEFAULTS: DerbyConfig = {
-  lanes: 4, mode: 'eliminate', points: 2, winPoints: 3,
-  length: 'medium', betting: true, betPoints: 1,
+  lanes: 4,
+  mode: 'eliminate',
+  controlMode: 'phones',
+  questionMode: 'manual',
+  points: 2,
+  winPoints: 3,
+  length: 'medium',
+  betting: true,
+  betPoints: 1,
 };
 
-/**
- * Race tuning, in fractions of the track per second.
- *
- * Tapping flat out and never answering a question finishes a medium race in about 26 s; three
- * correct answers cut that to roughly 14 s of running, plus however long the questions take.
- * So the thumbs keep you in it but the English wins it, which is the balance the class asked
- * for. The boosts are deliberately smaller than the speed-up they ride on: at a race this
- * short, scaling them together would end it on the second correct answer.
- *
- * MIN_TAP_MS is the fairness cap: a newer phone or an autoclicker gains nothing above ten
- * taps a second.
- */
 const MIN_TAP_MS = 100;
 const TAP_IMPULSE = 0.0048;
 const DRAG = 1.4;
@@ -58,6 +69,7 @@ const LENGTH_SCALE: Record<Length, number> = { short: 1.3, medium: 1, long: 0.8 
 
 interface RaceState {
   progress: number[];
+  rawProgress: number[];
   velocity: number[];
   stride: number[];
   lastTap: number[];
@@ -66,8 +78,13 @@ interface RaceState {
 }
 
 const freshRace = (n: number): RaceState => ({
-  progress: Array(n).fill(0), velocity: Array(n).fill(0), stride: Array(n).fill(0),
-  lastTap: Array(n).fill(0), boostLeft: Array(n).fill(0), boostRate: Array(n).fill(0),
+  progress: Array(n).fill(0),
+  rawProgress: Array(n).fill(0),
+  velocity: Array(n).fill(0),
+  stride: Array(n).fill(0),
+  lastTap: Array(n).fill(0),
+  boostLeft: Array(n).fill(0),
+  boostRate: Array(n).fill(0),
 });
 
 export function StellarDerbyGame({ island, onExit }: GameProps) {
@@ -76,6 +93,7 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
   const questions = useClassStore(s => s.questions);
   const addHistory = useClassStore(s => s.addHistory);
   const addPoints = useClassStore(s => s.addPoints);
+  const courseId = useClassStore(s => s.courseId);
 
   const students = useMemo(() => allStudents.filter(s => s.active), [allStudents]);
   const [config, setConfig] = useIslandConfig<DerbyConfig>(island.id, DEFAULTS);
@@ -83,6 +101,7 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
   const [phase, setPhase] = useState<Phase>('setup');
   const [rounds, setRounds] = useState<RoundLog[]>([]);
 
+  const [onlineUids, setOnlineUids] = useState<Set<string>>(new Set());
   const [riders, setRiders] = useState<Rider[]>([]);
   const [bets, setBets] = useState<Record<string, HorseColor>>({});
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set());
@@ -93,13 +112,67 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
   const [asked, setAsked] = useState(0);
   const [order, setOrder] = useState<number[]>([]);
   const [paid, setPaid] = useState(false);
+  const [currentRaceId, setCurrentRaceId] = useState('');
+  const [raisedHands, setRaisedHands] = useState<Record<string, number>>({});
+  const [liveRiderStates, setLiveRiderStates] = useState<Record<string, { ready: boolean }>>({});
 
-  // Everything the loop mutates lives in a ref: React state updaters must stay pure, and the
-  // double-scoring bugs in the other games all came from breaking that rule.
   const race = useRef<RaceState>(freshRace(0));
-  const [view, setView] = useState<{ progress: number[]; frame: number[]; boosting: boolean[] }>(
-    { progress: [], frame: [], boosting: [] },
-  );
+  const triggeredCheckpoints = useRef<Set<number>>(new Set());
+  const lastPublishedPos = useRef(0);
+  const lastProcessedTaps = useRef<Record<string, { count: number; lastTime: number }>>({});
+  const [laneBps, setLaneBps] = useState<number[]>([]);
+
+  const [view, setView] = useState<{ progress: number[]; frame: number[]; boosting: boolean[] }>({
+    progress: [],
+    frame: [],
+    boosting: [],
+  });
+
+  useEffect(() => {
+    initServerTimeOffset();
+  }, []);
+
+  // Track online presence of registered students
+  useEffect(() => {
+    if (!courseId) return;
+    return subscribeCoursePresence(courseId, setOnlineUids);
+  }, [courseId]);
+
+  // Subscribe to live state updates (to see rider ready status)
+  useEffect(() => {
+    if (!courseId) return;
+    return subscribeRaceState(courseId, state => {
+      if (state?.riders) {
+        const map: Record<string, { ready: boolean }> = {};
+        for (const [uid, r] of Object.entries(state.riders)) {
+          map[uid] = { ready: r.ready };
+        }
+        setLiveRiderStates(map);
+      }
+    });
+  }, [courseId]);
+
+  // Sync spectator bets
+  useEffect(() => {
+    if (!courseId || !config.betting) return;
+    return subscribeLiveBets(courseId, liveBets => {
+      setBets(prev => ({ ...prev, ...liveBets }));
+    });
+  }, [courseId, config.betting]);
+
+  // Sync hands during question freeze
+  useEffect(() => {
+    if (!courseId || phase !== 'question') return;
+    return subscribeHands(courseId, setRaisedHands);
+  }, [courseId, phase]);
+
+  const eligible = useMemo(() => {
+    const base = config.mode === 'eliminate' ? students.filter(s => !raced.has(s.id)) : students;
+    if (config.controlMode === 'phones') {
+      return base.filter(s => s.type !== 'manual' && (s.uid ? onlineUids.has(s.uid) : onlineUids.has(s.id)));
+    }
+    return base;
+  }, [students, raced, config.mode, config.controlMode, onlineUids]);
 
   const spectators = useMemo(
     () => students.filter(s => !riders.some(r => r.studentId === s.id)),
@@ -118,47 +191,134 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
   }, [addHistory, island.id]);
   const { pending, setPending, judge } = useJudgedAward(onSettled);
 
+  /* ---------- publish to RTDB helper ---------- */
+  const syncToRTDB = useCallback((nextPhase: LiveRaceState['phase'], extra?: Partial<LiveRaceState>) => {
+    if (!courseId) return;
+    const riderMap: Record<string, LiveRiderInfo> = {};
+    riders.forEach((r, i) => {
+      const uid = r.studentId;
+      riderMap[uid] = {
+        uid,
+        studentId: r.studentId,
+        name: r.name,
+        lane: i,
+        color: r.color,
+        ready: liveRiderStates[uid]?.ready ?? false,
+      };
+    });
+
+    const liveState: LiveRaceState = {
+      raceId: currentRaceId,
+      phase: nextPhase,
+      controlMode: config.controlMode,
+      questionMode: config.questionMode,
+      riders: riderMap,
+      startAt: extra?.startAt ?? 0,
+      currentQuestion: question,
+      results: extra?.results ?? null,
+      betting: config.betting,
+      betPoints: config.betPoints,
+      winPoints: config.winPoints,
+      questionPoints: config.points,
+      activeQuestionNominee: extra?.activeQuestionNominee ?? null,
+      turboUid: extra?.turboUid ?? null,
+      turboPoints: extra?.turboPoints ?? 0,
+      updatedAt: Date.now(),
+      ...extra,
+    };
+    void publishRaceState(courseId, liveState);
+  }, [courseId, riders, currentRaceId, config, question, liveRiderStates]);
+
   /* ---------- lobby ---------- */
 
   const drawRiders = useCallback((pool: Student[], lanes: number) => {
     const chosen = pickDistinct(pool, Math.min(lanes, pool.length));
     const colors = shuffled(HORSE_COLORS).slice(0, chosen.length);
-    setRiders(chosen.map((s, i) => ({ studentId: s.id, name: s.name, color: colors[i] })));
+    const newRiders = chosen.map((s, i) => ({ studentId: s.uid || s.id, name: s.name, color: colors[i] }));
+    setRiders(newRiders);
     setBets({});
     setPicked(new Set());
+    setLiveRiderStates({});
+    return newRiders;
   }, []);
 
-  const eligible = useMemo(
-    () => (config.mode === 'eliminate' ? students.filter(s => !raced.has(s.id)) : students),
-    [students, raced, config.mode],
-  );
-
-  // `lanes` is passed in from the setup form: reading config here would use the value from
-  // before setConfig committed, and the field would come out the previous size.
   const openLobby = useCallback((lanes = config.lanes) => {
-    drawRiders(eligible, lanes);
+    const newRaceId = crypto.randomUUID();
+    setCurrentRaceId(newRaceId);
+    triggeredCheckpoints.current.clear();
+    lastProcessedTaps.current = {};
+    const drawn = drawRiders(eligible, lanes);
     setOrder([]);
     setPaid(false);
     setAsked(0);
     setQuestion(null);
     setPending(null);
     setPhase('lobby');
-  }, [drawRiders, eligible, config.lanes, setPending]);
 
-  /** Swaps one rider for someone who is not already on the field. */
+    if (courseId) {
+      const riderMap: Record<string, LiveRiderInfo> = {};
+      drawn.forEach((r, i) => {
+        riderMap[r.studentId] = {
+          uid: r.studentId,
+          studentId: r.studentId,
+          name: r.name,
+          lane: i,
+          color: r.color,
+          ready: false,
+        };
+      });
+      void publishRaceState(courseId, {
+        raceId: newRaceId,
+        phase: 'lobby',
+        controlMode: config.controlMode,
+        questionMode: config.questionMode,
+        riders: riderMap,
+        startAt: 0,
+        currentQuestion: null,
+        results: null,
+        betting: config.betting,
+        betPoints: config.betPoints,
+        winPoints: config.winPoints,
+        questionPoints: config.points,
+        activeQuestionNominee: null,
+        turboUid: null,
+        turboPoints: 0,
+        updatedAt: Date.now(),
+      });
+    }
+  }, [drawRiders, eligible, config, setPending, courseId]);
+
   const rerollRider = useCallback((index: number) => {
     const taken = new Set(riders.map(r => r.studentId));
-    const bench = eligible.filter(s => !taken.has(s.id));
+    const bench = eligible.filter(s => !taken.has(s.uid || s.id));
     if (!bench.length) return;
     const next = pickOne(bench);
     sfx.click();
-    setRiders(rs => rs.map((r, i) => (i === index ? { ...r, name: next.name, studentId: next.id } : r)));
-  }, [riders, eligible]);
+    const updated = riders.map((r, i) => (i === index ? { ...r, name: next.name, studentId: next.uid || next.id } : r));
+    setRiders(updated);
 
-  /* ---------- race loop ---------- */
+    if (courseId) {
+      const riderMap: Record<string, LiveRiderInfo> = {};
+      updated.forEach((r, i) => {
+        riderMap[r.studentId] = {
+          uid: r.studentId,
+          studentId: r.studentId,
+          name: r.name,
+          lane: i,
+          color: r.color,
+          ready: false,
+        };
+      });
+      void updateRaceState(courseId, { riders: riderMap });
+    }
+  }, [riders, eligible, courseId]);
+
+  /* ---------- race start and countdown ---------- */
 
   const start = useCallback(() => {
     race.current = freshRace(riders.length);
+    triggeredCheckpoints.current.clear();
+    setLaneBps(Array(riders.length).fill(0));
     setView({
       progress: Array(riders.length).fill(0),
       frame: Array(riders.length).fill(0),
@@ -166,26 +326,83 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
     });
     setCount(3);
     setPhase('countdown');
-  }, [riders.length]);
+
+    const startAt = getServerTime() + 3200;
+    syncToRTDB('countdown', { startAt });
+  }, [riders.length, syncToRTDB]);
 
   useEffect(() => {
     if (phase !== 'countdown') return;
     sfx.tick();
     const id = setTimeout(() => {
-      if (count > 1) setCount(c => c - 1);
-      else setPhase('running');
-    }, 900);
+      if (count > 1) {
+        setCount(c => c - 1);
+      } else {
+        // Reset base tap counters so taps during countdown do NOT count
+        const now = performance.now();
+        riders.forEach(r => {
+          lastProcessedTaps.current[r.studentId] = { count: 0, lastTime: now };
+        });
+        setPhase('running');
+        syncToRTDB('running');
+      }
+    }, 1000);
     return () => clearTimeout(id);
-  }, [phase, count]);
+  }, [phase, count, riders, syncToRTDB]);
+
+  /* ---------- tapping authority ---------- */
 
   const tap = useCallback((lane: number) => {
     if (phase !== 'running') return;
     const r = race.current;
     const now = performance.now();
-    if (now - r.lastTap[lane] < MIN_TAP_MS) return; // fairness cap, not a bug
+    if (now - r.lastTap[lane] < MIN_TAP_MS) return; // fairness cap
     r.lastTap[lane] = now;
     r.velocity[lane] += TAP_IMPULSE;
   }, [phase]);
+
+  // Process incoming taps from student phones via RTDB
+  useEffect(() => {
+    if (phase !== 'running' || !courseId || config.controlMode !== 'phones') return;
+    const unsub = subscribeStudentTaps(courseId, tapData => {
+      const now = performance.now();
+      riders.forEach((r, lane) => {
+        const studentTap = tapData[r.studentId];
+        if (studentTap && studentTap.raceId === currentRaceId) {
+          const prev = lastProcessedTaps.current[r.studentId] ?? { count: 0, lastTime: now - 150 };
+          const delta = studentTap.count - prev.count;
+          if (delta > 0) {
+            const elapsedSec = Math.max(0.1, (now - prev.lastTime) / 1000);
+            const maxAllowed = Math.ceil(elapsedSec * 10); // max 10 taps/sec
+            const validDelta = Math.min(delta, maxAllowed);
+            race.current.velocity[lane] += validDelta * TAP_IMPULSE;
+            lastProcessedTaps.current[r.studentId] = { count: studentTap.count, lastTime: now };
+            setLaneBps(prevBps => {
+              const next = [...prevBps];
+              next[lane] = Math.round(validDelta / elapsedSec);
+              return next;
+            });
+          }
+        }
+      });
+    });
+    return () => unsub();
+  }, [phase, courseId, config.controlMode, riders, currentRaceId]);
+
+  /* ---------- questions ---------- */
+
+  const askQuestion = useCallback(() => {
+    if (!questions.length) return;
+    sfx.click();
+    const qText = pickOne(questions).text;
+    setQuestion(qText);
+    setAsked(a => a + 1);
+    setPhase('question');
+    if (courseId) void clearHands(courseId);
+    syncToRTDB('question', { currentQuestion: qText });
+  }, [questions, courseId, syncToRTDB]);
+
+  /* ---------- race physics loop ---------- */
 
   useEffect(() => {
     if (phase !== 'running') return;
@@ -206,10 +423,13 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
           r.boostLeft[i] = Math.max(0, r.boostLeft[i] - dt);
           speed += r.boostRate[i];
         }
-        r.progress[i] = Math.min(1, r.progress[i] + speed * dt);
-        // stride rate follows speed, so a horse being tapped hard visibly gallops harder
+        r.rawProgress[i] += speed * dt;
+        r.progress[i] = Math.min(1, r.rawProgress[i]);
         r.stride[i] += (5 + speed * 900) * dt;
-        if (r.progress[i] >= 1 && finished < 0) finished = i;
+
+        if (r.rawProgress[i] >= 1 && finished < 0) {
+          finished = i;
+        }
       }
 
       setView({
@@ -218,11 +438,47 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
         boosting: r.boostLeft.map(b => b > 0),
       });
 
+      // Throttle publishing positions to RTDB ~8 times per second (125 ms)
+      if (courseId && now - lastPublishedPos.current > 125) {
+        lastPublishedPos.current = now;
+        const posMap: Record<number, number> = {};
+        r.progress.forEach((p, idx) => { posMap[idx] = Math.round(p * 1000) / 1000; });
+        void publishPositions(courseId, posMap);
+      }
+
+      // Auto checkpoints (at 25%, 50%, 75% of leader)
+      if (config.questionMode === 'auto' && questions.length > 0) {
+        const leaderRaw = Math.max(...r.rawProgress);
+        for (const cp of [0.25, 0.5, 0.75]) {
+          if (leaderRaw >= cp && !triggeredCheckpoints.current.has(cp)) {
+            triggeredCheckpoints.current.add(cp);
+            askQuestion();
+            return;
+          }
+        }
+      }
+
       if (finished >= 0) {
-        // ranked by distance covered, so second and third are real placings
-        setOrder([...r.progress.keys()].sort((a, b) => r.progress[b] - r.progress[a]));
+        // Precise unclipped tie-breaker: sort by rawProgress (who crossed furthest)
+        const ranked = [...r.rawProgress.keys()].sort((a, b) => r.rawProgress[b] - r.rawProgress[a]);
+        setOrder(ranked);
         sfx.win();
         setPhase('finish');
+
+        const podiumResults = ranked.slice(0, Math.min(3, riders.length)).map((lane, i) => ({
+          uid: riders[lane]?.studentId ?? '',
+          lane,
+          name: riders[lane]?.name ?? '',
+          pos: i + 1,
+          points: Math.max(0, config.winPoints - i),
+        }));
+
+        syncToRTDB('finish', {
+          results: {
+            championUid: riders[ranked[0]]?.studentId,
+            podium: podiumResults,
+          },
+        });
         return;
       }
       raf = requestAnimationFrame(step);
@@ -230,12 +486,17 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
 
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [phase, config.length]);
+  }, [phase, config.length, config.questionMode, config.winPoints, questions.length, courseId, riders, syncToRTDB, askQuestion]);
 
-  // Keys 1–6 drive the lanes when the class shares one screen instead of using phones.
+  // Keys 1–6 (and Q for question) drive the lanes when sharing one screen
   useEffect(() => {
     if (phase !== 'running') return;
     const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return; // IGNORE REPEAT!
+      if (e.key === 'q' || e.key === 'Q') {
+        askQuestion();
+        return;
+      }
       const lane = Number(e.key) - 1;
       if (Number.isInteger(lane) && lane >= 0 && lane < riders.length) {
         e.preventDefault();
@@ -244,25 +505,28 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [phase, riders.length, tap]);
-
-  /* ---------- questions ---------- */
-
-  const askQuestion = useCallback(() => {
-    if (!questions.length) return;
-    sfx.click();
-    setQuestion(pickOne(questions).text);
-    setAsked(a => a + 1);
-    setPhase('question');
-  }, [questions]);
+  }, [phase, riders.length, tap, askQuestion]);
 
   const resume = useCallback(() => {
     setQuestion(null);
     setPending(null);
-    setPhase('running');
-  }, [setPending]);
+    if (courseId) void clearHands(courseId);
 
-  /** The teacher names who answered; the verdict bar then decides whether it was worth a boost. */
+    // Show a short "Ready... GO!" before unfreezing
+    setPhase('resumeCountdown');
+    const timer = setTimeout(() => {
+      // Re-anchor student tap counts so taps before GO do NOT count
+      const now = performance.now();
+      riders.forEach(r => {
+        const last = lastProcessedTaps.current[r.studentId]?.count ?? 0;
+        lastProcessedTaps.current[r.studentId] = { count: last, lastTime: now };
+      });
+      setPhase('running');
+      syncToRTDB('running');
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [setPending, courseId, riders, syncToRTDB]);
+
   const nominate = useCallback((index: number) => {
     const rider = riders[index];
     if (!rider) return;
@@ -273,7 +537,10 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
       points: config.points,
       summary: t('derby.answered', { name: rider.name }),
     });
-  }, [riders, config.points, setPending, t]);
+    if (courseId) {
+      void updateRaceState(courseId, { activeQuestionNominee: rider.studentId });
+    }
+  }, [riders, config.points, setPending, courseId, t]);
 
   const boostedFor = pending?.studentIds[0];
   const judgeAndResume = useCallback((verdict: Parameters<typeof judge>[0]) => {
@@ -285,14 +552,17 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
         r.boostRate[lane] = (BOOST_BASE + BOOST_PER_POINT * config.points) / BOOST_SECONDS;
       }
       sfx.correct();
+      if (courseId) {
+        void updateRaceState(courseId, { turboUid: boostedFor, turboPoints: config.points });
+      }
     } else if (verdict === 'wrong') {
       sfx.wrong();
     }
     judge(verdict);
     resume();
-  }, [boostedFor, riders, config.points, judge, resume]);
+  }, [boostedFor, riders, config.points, judge, resume, courseId]);
 
-  /* ---------- finish ---------- */
+  /* ---------- finish & payout ---------- */
 
   const podium = useMemo(() => order.slice(0, Math.min(3, riders.length)), [order, riders.length]);
   const podiumPoints = useMemo(
@@ -308,8 +578,6 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
     [bets, winnerColor, config.betting],
   );
 
-  // Guarded by a ref, not by `paid`: a second click must never be able to pay twice, and the
-  // state flag alone would not stop two clicks inside one render pass.
   const paidRef = useRef(false);
   const payOut = useCallback(() => {
     if (paidRef.current) return;
@@ -347,6 +615,13 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
 
   useEffect(() => { paidRef.current = false; }, [order]);
 
+  // Clean close on unmount or exit
+  useEffect(() => {
+    return () => {
+      if (courseId) void updateRaceState(courseId, { phase: 'closed' });
+    };
+  }, [courseId]);
+
   /* ---------- betting ---------- */
 
   const placeBets = useCallback((color: HorseColor) => {
@@ -371,11 +646,22 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
 
   /* ---------- render ---------- */
 
-  const blocker = students.length < 2
+  const blocker = config.controlMode === 'phones' && eligible.length < 2
+    ? t('derby.notEnoughOnline')
+    : students.length < 2
     ? t('game.notEnoughStudents')
     : eligible.length < 2
     ? t('game.allPlayed')
     : null;
+
+  // Ordered list of raised hands
+  const orderedHands = useMemo(() => {
+    return Object.entries(raisedHands)
+      .sort(([, a], [, b]) => a - b)
+      .map(([uid]) => uid);
+  }, [raisedHands]);
+
+  const allReady = riders.length > 0 && riders.every(r => liveRiderStates[r.studentId]?.ready);
 
   if (phase === 'setup') {
     return (
@@ -397,6 +683,28 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
             </>
           }
         >
+          <Field label={t('derby.controlMode')}>
+            <Segmented
+              value={draft.controlMode}
+              onChange={controlMode => setDraft(d => ({ ...d, controlMode }))}
+              options={[
+                { value: 'phones', label: t('derby.controlModePhones') },
+                { value: 'single', label: t('derby.controlModeSingle') },
+              ]}
+            />
+          </Field>
+
+          <Field label={t('derby.questionMode')}>
+            <Segmented
+              value={draft.questionMode}
+              onChange={questionMode => setDraft(d => ({ ...d, questionMode }))}
+              options={[
+                { value: 'auto', label: t('derby.questionModeAuto') },
+                { value: 'manual', label: t('derby.questionModeManual') },
+              ]}
+            />
+          </Field>
+
           <Field label={t('derby.lanes')} hint={t('derby.lanesHint')}>
             <Stepper value={draft.lanes} min={2} max={6} onChange={lanes => setDraft(d => ({ ...d, lanes }))} />
           </Field>
@@ -453,8 +761,12 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
           wide
           footer={
             <>
-              <button type="button" className="rc-cut gm-btn gm-btn-primary" onClick={() => { sfx.lever(); start(); }}>
-                {t('derby.start')}
+              <button
+                type="button"
+                className={`rc-cut gm-btn gm-btn-primary ${allReady || config.controlMode === 'single' ? '' : 'is-warning'}`}
+                onClick={() => { sfx.lever(); start(); }}
+              >
+                {allReady || config.controlMode === 'single' ? t('derby.start') : t('derby.startAnyway')}
               </button>
               <button type="button" className="rc-cut gm-btn" onClick={() => { sfx.click(); drawRiders(eligible, config.lanes); }}>
                 {t('derby.redraw')}
@@ -465,14 +777,38 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
         >
           <Field label={t('derby.field')} hint={t('derby.fieldHint')}>
             <div className="dv-riders">
-              {riders.map((r, i) => (
-                <button key={r.studentId} type="button" className="rc-cut dv-rider" onClick={() => rerollRider(i)}>
-                  <span className="dv-swatch" style={{ background: HORSE[r.color].glow, color: HORSE[r.color].glow }} />
-                  <span className="dv-lane-n">{i + 1}</span>
-                  <span>{r.name}</span>
-                </button>
-              ))}
+              {riders.map((r, i) => {
+                const isOnline = onlineUids.has(r.studentId);
+                const isReady = liveRiderStates[r.studentId]?.ready;
+                return (
+                  <button key={r.studentId} type="button" className="rc-cut dv-rider" onClick={() => rerollRider(i)}>
+                    <span className="dv-swatch" style={{ background: HORSE[r.color].glow, color: HORSE[r.color].glow }} />
+                    <span className="dv-lane-n">{i + 1}</span>
+                    <span>{r.name}</span>
+                    {config.controlMode === 'phones' && (
+                      <span
+                        className="dv-status-dot"
+                        title={isReady ? t('derby.ready') : isOnline ? t('derby.online') : t('derby.offline')}
+                        style={{
+                          display: 'inline-block',
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          marginLeft: 6,
+                          background: isReady ? '#06D6A0' : isOnline ? '#4CC9F0' : '#EF476F',
+                          boxShadow: `0 0 6px ${isReady ? '#06D6A0' : isOnline ? '#4CC9F0' : '#EF476F'}`,
+                        }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </div>
+            {config.controlMode === 'phones' && !allReady && (
+              <p style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 8 }}>
+                ℹ️ {t('derby.waitingReady')}
+              </p>
+            )}
           </Field>
 
           {config.betting && (
@@ -489,12 +825,12 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
               </div>
               <div className="dv-riders" style={{ marginTop: 10 }}>
                 {spectators.map(s => {
-                  const bet = bets[s.id];
+                  const bet = bets[s.uid || s.id];
                   return (
                     <button key={s.id} type="button"
-                      className={`rc-cut dv-rider${picked.has(s.id) ? ' is-on' : ''}`}
-                      aria-pressed={picked.has(s.id)}
-                      onClick={() => togglePick(s.id)}>
+                      className={`rc-cut dv-rider${picked.has(s.uid || s.id) ? ' is-on' : ''}`}
+                      aria-pressed={picked.has(s.uid || s.id)}
+                      onClick={() => togglePick(s.uid || s.id)}>
                       {bet && <span className="dv-swatch" style={{ background: HORSE[bet].glow, color: HORSE[bet].glow }} />}
                       <span>{s.name}</span>
                     </button>
@@ -534,7 +870,7 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
         frame={view.frame}
         boosting={view.boosting}
         bets={config.betting ? betTally : {}}
-        frozen={phase === 'question'}
+        frozen={phase === 'question' || phase === 'resumeCountdown'}
         winner={phase === 'finish' ? order[0] ?? null : null}
       />
 
@@ -549,22 +885,35 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
         <>
           <div className="dv-pads">
             {riders.map((r, i) => (
-              <button key={r.studentId} type="button" className="rc-cut dv-pad"
+              <button
+                key={r.studentId}
+                type="button"
+                className="rc-cut dv-pad"
                 style={{ borderBottom: `3px solid ${HORSE[r.color].glow}` }}
-                onPointerDown={() => tap(i)}>
+                onPointerDown={() => tap(i)}
+              >
                 <span className="dv-pad-key">{i + 1}</span>
                 <span>{r.name}</span>
+                {config.controlMode === 'phones' && laneBps[i] > 0 && (
+                  <span style={{ fontSize: 10, color: 'var(--star-cyan)' }}>{laneBps[i]} t/s</span>
+                )}
               </button>
             ))}
           </div>
           <button type="button" className="rc-cut dv-ask" disabled={!questions.length} onClick={askQuestion}>
-            {t('derby.ask')}
+            {t('derby.ask')} (Q)
           </button>
         </>
       )}
 
       {phase === 'countdown' && (
         <div className="dv-over"><span className="dv-count" key={count}>{count}</span></div>
+      )}
+
+      {phase === 'resumeCountdown' && (
+        <div className="dv-over">
+          <span className="dv-count" style={{ fontSize: 90 }}>{t('derby.resumeCountdown')}</span>
+        </div>
       )}
 
       {phase === 'question' && (
@@ -580,6 +929,30 @@ export function StellarDerbyGame({ island, onExit }: GameProps) {
             />
           ) : (
             <>
+              {orderedHands.length > 0 && (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, color: 'var(--gold-jackpot)', fontWeight: 700 }}>
+                    ✋ {t('derby.handsOrder')}:
+                  </span>
+                  {orderedHands.map((uid, idx) => {
+                    const riderIdx = riders.findIndex(r => r.studentId === uid);
+                    if (riderIdx < 0) return null;
+                    const r = riders[riderIdx];
+                    return (
+                      <button
+                        key={uid}
+                        type="button"
+                        className="rc-cut dv-rider is-on"
+                        onClick={() => nominate(riderIdx)}
+                        style={{ padding: '4px 10px', fontSize: 12 }}
+                      >
+                        <span style={{ fontWeight: 900, marginRight: 4 }}>#{idx + 1}</span>
+                        <span>{r.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               <div className="dv-riders">
                 {riders.map((r, i) => (
                   <button key={r.studentId} type="button" className="rc-cut dv-rider" onClick={() => nominate(i)}>

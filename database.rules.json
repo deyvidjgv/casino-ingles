@@ -1,0 +1,42 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    "presence": {
+      "$courseId": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    },
+    "courses": {
+      "$courseId": {
+        ".write": "auth != null && (!data.exists() || data.child('teacherId').val() === auth.uid)"
+      }
+    },
+    "races": {
+      "$courseId": {
+        "state": {
+          ".write": "auth != null && (root.child('courses').child($courseId).child('teacherId').val() === auth.uid || !root.child('courses').child($courseId).exists())"
+        },
+        "positions": {
+          ".write": "auth != null && (root.child('courses').child($courseId).child('teacherId').val() === auth.uid || !root.child('courses').child($courseId).exists())"
+        },
+        "taps": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        },
+        "hands": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        },
+        "bets": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        }
+      }
+    }
+  }
+}

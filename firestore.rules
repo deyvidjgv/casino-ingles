@@ -47,12 +47,14 @@ service cloud.firestore {
         allow read: if isMember(courseId);
         // Teacher has full control over members
         allow create, delete: if isTeacher(courseId) ||
-          (isSignedIn() && memberId == request.auth.uid && request.resource.data.points == 0);
-        // Student can update their own name/avatar, but NEVER modify points
+          (isSignedIn() && memberId == request.auth.uid && request.resource.data.points == 0 &&
+           request.resource.data.type in ['guest', 'account'] && request.resource.data.type != 'manual');
+        // Student can update their own name/avatar, but NEVER modify points or type
         allow update: if isTeacher(courseId) || (
           isSignedIn() &&
           memberId == request.auth.uid &&
-          request.resource.data.points == resource.data.points
+          request.resource.data.points == resource.data.points &&
+          (!('type' in request.resource.data) || request.resource.data.type == resource.data.type)
         );
       }
 

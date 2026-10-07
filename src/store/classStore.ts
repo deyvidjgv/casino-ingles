@@ -11,12 +11,15 @@ import { addMember, createCourse, removeMember, setMemberActive, setMemberPoints
  *  student or guest must never even attempt a mutation. */
 const isTeacher = () => useAuthStore.getState().user?.role === 'teacher';
 
+export type MemberType = 'account' | 'guest' | 'manual';
+
 export interface Student {
   id: string;
   name: string;
   active: boolean;
   points: number;
   avatarSeed?: string;
+  type?: MemberType;
   /** auth uid of the student who joined with the class code; absent if the teacher added them */
   uid?: string;
 }
@@ -92,9 +95,10 @@ function demo() {
     projectorMode: false,
     activeIslandId: null,
     // Sample roster for trying the games solo. Generating a class code clears it.
-    students: ['Ana', 'Luis', 'Camila', 'Mateo', 'Sofía', 'Daniel', 'Valentina', 'Samuel', 'Isabella', 'Juan'].map(name => ({
-      id: uid(), name, active: true, points: 0, avatarSeed: name,
-    })),
+    students: ['Ana', 'Luis', 'Camila', 'Mateo', 'Sofía', 'Daniel', 'Valentina', 'Samuel', 'Isabella', 'Juan'].map(name => {
+      const u = uid();
+      return { id: u, uid: u, name, active: true, points: 0, avatarSeed: name, type: 'account' as MemberType };
+    }),
     topics: items(['My family', 'Food', 'Past simple', 'My last vacation', 'Hobbies', 'Technology', 'Future plans', 'Animals']),
     questions: items([
       'What did you do last weekend?', 'Describe your best friend.', 'What is your favorite movie and why?',
@@ -164,7 +168,7 @@ export const useClassStore = create<ClassState>()(
         set(s => ({
           students: [
             ...s.students,
-            ...cleaned.map(name => ({ id: uid(), name, active: true, points: 0, avatarSeed: name })),
+            ...cleaned.map(name => ({ id: uid(), name, active: true, points: 0, avatarSeed: name, type: 'manual' as MemberType })),
           ],
         }));
       },

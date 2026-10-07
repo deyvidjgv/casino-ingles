@@ -137,3 +137,163 @@
   stroke-width: 1.5;
   filter: drop-shadow(0 0 5px rgba(255, 209, 102, 0.55));
 }
+
+/* Casino Mode & Selector Mode UI Enhancements */
+.rl-casino-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(14, 17, 48, 0.85);
+  border: 1px solid rgba(255, 209, 102, 0.25);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.rl-bettor-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rl-bettor-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-soft);
+  font-family: var(--font-heading);
+}
+
+.rl-bettor-select {
+  background: rgba(26, 30, 74, 0.9);
+  color: var(--text-main);
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+
+.rl-bets-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rl-tab-btn {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  background: rgba(26, 30, 74, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-soft);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.rl-tab-btn.is-active {
+  background: var(--island-color, #f72585);
+  color: #fff;
+  border-color: #fff;
+  font-weight: 700;
+}
+
+.rl-bet-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rl-bet-option-btn {
+  flex: 1 1 calc(50% - 6px);
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  background: rgba(20, 24, 60, 0.9);
+  border: 1px solid rgba(255, 209, 102, 0.3);
+  color: var(--text-main);
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.rl-bet-option-btn:hover {
+  border-color: #ffd166;
+  background: rgba(30, 36, 90, 0.9);
+}
+
+.rl-bet-option-btn.is-selected {
+  background: #ffd166;
+  color: #1a1e4a;
+  border-color: #fff;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(255, 209, 102, 0.6);
+}
+
+.rl-bet-red {
+  color: #ff6b81;
+}
+
+.rl-bet-red.is-selected {
+  background: #f72585;
+  color: #fff;
+}
+
+.rl-bet-black {
+  color: #a0aec0;
+}
+
+.rl-bet-black.is-selected {
+  background: #1a1e4a;
+  color: #ffd166;
+  border-color: #ffd166;
+}
+
+.rl-bet-preview {
+  font-size: 0.8rem;
+  color: #ffd166;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 6px 10px;
+  border-radius: 4px;
+  border-left: 3px solid #ffd166;
+}
+
+.rl-result-callout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(14, 17, 48, 0.9);
+  border: 1px solid #ffd166;
+  border-radius: 6px;
+  animation: rl-win 0.8s ease-in-out infinite alternate;
+}
+
+.rl-result-num {
+  font-family: var(--font-numbers);
+  font-size: 1.4rem;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.rl-result-num.is-red {
+  background: #f72585;
+  color: #fff;
+}
+
+.rl-result-num.is-black {
+  background: #1a1e4a;
+  color: #ffd166;
+  border: 1px solid #ffd166;
+}
+
+.rl-result-num.is-green {
+  background: #059669;
+  color: #fff;
+}
+
+.rl-result-info {
+  font-size: 0.85rem;
+  color: var(--text-main);
+  line-height: 1.3;
+}
+

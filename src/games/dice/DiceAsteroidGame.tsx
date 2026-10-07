@@ -100,19 +100,45 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
   const cubeRefs = useRef<(HTMLDivElement | null)[]>([]);
   const impactRef = useRef<HTMLDivElement>(null);
   const rotState = useRef<{ rx: number; ry: number }[]>([]);
+  const isRollingRef = useRef(false);
+  const tlRef = useRef<gsap.core.Timeline | null>(null);
+  const tickerRef = useRef<number | null>(null);
+  const timeoutRef = useRef<number | null>(null);
 
-  const generateFacesForDie = (kind: DieKind, dieIdx: number, chosenStudents: typeof students): FaceData[] => {
+  useEffect(() => {
+    return () => {
+      tlRef.current?.kill();
+      if (tickerRef.current) clearInterval(tickerRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  const generateFacesForDie = (
+    kind: DieKind,
+    targetFaceIdx: number,
+    chosenStudentForDie?: { id: string; name: string },
+    allChosenStudents: typeof students = []
+  ): FaceData[] => {
     if (kind === 'student') {
-      const poolCopy = [...pool.available];
-      const otherStudents = poolCopy.filter(s => !chosenStudents.some(cs => cs.id === s.id));
-      const studentPool = [chosenStudents[dieIdx] || poolCopy[0] || { id: '1', name: 'Student' }, ...otherStudents];
+      const student = chosenStudentForDie || pool.available[0] || { id: '1', name: 'Student' };
+      const others = pool.available.filter(
+        s => !allChosenStudents.some(cs => cs.id === s.id) && s.id !== student.id
+      );
+      const fillerPool = others.length ? others : pool.available;
 
       return Array.from({ length: 6 }, (_, i) => {
-        const st = studentPool[i % studentPool.length];
+        if (i === targetFaceIdx) {
+          return {
+            pipCount: i + 1,
+            label: student.name,
+            studentId: student.id,
+          };
+        }
+        const filler = fillerPool[i % fillerPool.length];
         return {
           pipCount: i + 1,
-          label: st?.name || `Student ${i + 1}`,
-          studentId: st?.id,
+          label: filler?.name || `Student ${i + 1}`,
+          studentId: filler?.id,
         };
       });
     }
@@ -147,8 +173,7 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
     const chosen = pickDistinct(pool.available, studentDiceCount);
     let stCount = 0;
     const initial = config.diceKinds.map((kind) => {
-      const faces = generateFacesForDie(kind, stCount, chosen);
-      if (kind === 'student') stCount++;
+      const faces = generateFacesForDie(kind, 0, kind === 'student' ? chosen[stCount++] : undefined, chosen);
       return faces;
     });
     setDiceFaces(initial);
@@ -157,19 +182,25 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
   }, [config.diceKinds, config.preset, pool.available.length]);
 
   function rollDice() {
-    if (rolling || blocker) return;
+    if (rolling || isRollingRef.current || blocker) return;
+    isRollingRef.current = true;
     setRolling(true);
+
     // 1. CRYPTO-FIRST: decide target face index for each die BEFORE animation starts
+    const winningFaceIndices = config.diceKinds.map(() => randomInt(6));
     const chosenStudents = pickDistinct(pool.available, studentDiceCount);
     let stCount = 0;
-    const newDiceFaces = config.diceKinds.map(kind => {
-      const faces = generateFacesForDie(kind, stCount, chosenStudents);
-      if (kind === 'student') stCount++;
-      return faces;
+
+    const newDiceFaces = config.diceKinds.map((kind, dieIdx) => {
+      const targetFace = winningFaceIndices[dieIdx];
+      let studentForDie: { id: string; name: string } | undefined;
+      if (kind === 'student') {
+        studentForDie = chosenStudents[stCount++];
+      }
+      return generateFacesForDie(kind, targetFace, studentForDie, chosenStudents);
     });
     setDiceFaces(newDiceFaces);
 
-    const winningFaceIndices = config.diceKinds.map(() => randomInt(6));
     const landedFaces = winningFaceIndices.map((faceIdx, dieIdx) => newDiceFaces[dieIdx][faceIdx]);
 
     sfx.whoosh();
@@ -178,24 +209,56 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const duration = reduced ? 1.0 : 2.4;
 
+    if (tickerRef.current) clearInterval(tickerRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    tickerRef.current = window.setInterval(() => sfx.tick(), 140);
+    timeoutRef.current = window.setTimeout(() => {
+      if (tickerRef.current) {
+        clearInterval(tickerRef.current);
+        tickerRef.current = null;
+      }
+    }, Math.max(0, (duration - 0.4) * 1000));
+
     const tl = gsap.timeline({
       onComplete: () => {
+        if (tickerRef.current) {
+          clearInterval(tickerRef.current);
+          tickerRef.current = null;
+        }
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        isRollingRef.current = false;
         setRolling(false);
         finishRoll(landedFaces);
       },
     });
+    tlRef.current = tl;
 
     cubeRefs.current.forEach((el, i) => {
       if (!el) return;
       const targetBase = BASE_ROTATIONS[winningFaceIndices[i]];
-      // Add 2 to 4 full 360-degree rotations
-      const extraSpinsX = (2 + randomInt(2)) * 360;
-      const extraSpinsY = (2 + randomInt(2)) * 360;
-
       const current = rotState.current[i] || { rx: 0, ry: 0 };
-      const targetRx = targetBase.rx + extraSpinsX;
-      const targetRy = targetBase.ry + extraSpinsY;
-      rotState.current[i] = { rx: targetRx % 360, ry: targetRy % 360 };
+
+      // Continuous rotation: calculate positive forward delta to prevent visual snapping
+      const extraRotX = (2 + randomInt(2)) * 360;
+      const extraRotY = (2 + randomInt(2)) * 360;
+
+      const normCurX = ((current.rx % 360) + 360) % 360;
+      const normCurY = ((current.ry % 360) + 360) % 360;
+      const normTgtX = ((targetBase.rx % 360) + 360) % 360;
+      const normTgtY = ((targetBase.ry % 360) + 360) % 360;
+
+      let deltaX = normTgtX - normCurX;
+      if (deltaX <= 0) deltaX += 360;
+
+      let deltaY = normTgtY - normCurY;
+      if (deltaY <= 0) deltaY += 360;
+
+      const targetRx = current.rx + extraRotX + deltaX;
+      const targetRy = current.ry + extraRotY + deltaY;
+      rotState.current[i] = { rx: targetRx, ry: targetRy };
 
       tl.fromTo(
         el,
@@ -214,10 +277,6 @@ export function DiceAsteroidGame({ island, onExit }: GameProps) {
           rotationZ: 0,
           duration,
           ease: reduced ? 'power2.out' : 'bounce.out',
-          onStart: () => {
-            const ticker = window.setInterval(() => sfx.tick(), 140);
-            setTimeout(() => clearInterval(ticker), (duration - 0.4) * 1000);
-          },
         },
         i * 0.15
       );

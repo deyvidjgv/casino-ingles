@@ -10,12 +10,15 @@ import { LoginScreen } from './features/auth/LoginScreen';
 import { useAuthStore } from './features/auth/authStore';
 import { useClassStore } from './store/classStore';
 import { DEFAULT_ISLANDS } from './features/galaxy/config';
+import { trackPresence } from './lib/presence';
+import { DerbyPlayerView } from './games/derby/DerbyPlayerView';
 
 export default function App() {
   const { t } = useTranslation();
   const [classManagerOpen, setClassManagerOpen] = useState(false);
   const activeIslandId = useClassStore(s => s.activeIslandId);
   const setActiveIslandId = useClassStore(s => s.setActiveIslandId);
+  const courseId = useClassStore(s => s.courseId);
   const projectorMode = useClassStore(s => s.projectorMode);
   const user = useAuthStore(s => s.user);
   const ready = useAuthStore(s => s.ready);
@@ -25,6 +28,13 @@ export default function App() {
   useEffect(() => {
     document.body.classList.toggle('is-projector-mode', projectorMode);
   }, [projectorMode]);
+
+  // Track online presence in RTDB when user is inside a course
+  useEffect(() => {
+    if (user && courseId) {
+      return trackPresence(courseId, user.uid, user.name);
+    }
+  }, [user, courseId]);
 
   // Signing out must drop the roster listener: without a session Firestore rejects it anyway.
   useEffect(() => {
@@ -46,31 +56,36 @@ export default function App() {
         </>
       )}
 
-      <GalaxyMap
-        canEnter={canManage}
-        onIslandChange={island => {
-          if (canManage) setActiveIslandId(island?.id ?? null);
-        }}
-        onIslandIntent={island => (canManage ? preloadGame(island.game) : undefined)}
-        renderIsland={activeIsland
-          ? (island, back) => (
-              // `inert` is what makes this read-only: pointer-events alone still lets a
-              // student tab to a button and press Enter.
-              <div className={canManage ? 'rc-play' : 'rc-play is-spectator'} inert={!canManage}>
-                <GameHost
-                  island={island}
-                  onExit={() => {
-                    if (!canManage) return;
-                    setActiveIslandId(null);
-                    back();
-                  }}
-                />
-              </div>
-            )
-          : undefined}
-      />
+      {/* For students during Derby, show the interactive DerbyPlayerView */}
+      {!canManage && activeIsland?.game === 'derby' ? (
+        <DerbyPlayerView />
+      ) : (
+        <GalaxyMap
+          canEnter={canManage}
+          onIslandChange={island => {
+            if (canManage) setActiveIslandId(island?.id ?? null);
+          }}
+          onIslandIntent={island => (canManage ? preloadGame(island.game) : undefined)}
+          renderIsland={activeIsland
+            ? (island, back) => (
+                // `inert` is what makes this read-only: pointer-events alone still lets a
+                // student tab to a button and press Enter.
+                <div className={canManage ? 'rc-play' : 'rc-play is-spectator'} inert={!canManage}>
+                  <GameHost
+                    island={island}
+                    onExit={() => {
+                      if (!canManage) return;
+                      setActiveIslandId(null);
+                      back();
+                    }}
+                  />
+                </div>
+              )
+            : undefined}
+        />
+      )}
 
-      {activeIsland && !canManage && (
+      {activeIsland && !canManage && activeIsland.game !== 'derby' && (
         <div className="rc-cut rc-spectator-badge" role="status">{t('game.watching')}</div>
       )}
 

@@ -364,3 +364,593 @@
     animation: none;
   }
 }
+
+/* ========================================================================= */
+/* STUDENT LIVE PLAYER VIEW (.dv-pview)                                      */
+/* ========================================================================= */
+
+.dv-pview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 100vh;
+  width: 100%;
+  padding: 16px;
+  box-sizing: border-box;
+  background: radial-gradient(circle at 50% 30%, #151b44 0%, #07091a 100%);
+  color: var(--text-main);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+  overflow-x: hidden;
+}
+
+.dv-pview-waiting,
+.dv-pview-spectator {
+  justify-content: center;
+  gap: 20px;
+  text-align: center;
+}
+
+.dv-pview-card {
+  background: rgba(26, 30, 74, 0.85);
+  border: 1px solid var(--star-cyan);
+  border-radius: 16px;
+  padding: 28px 24px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 0 30px rgba(76, 201, 240, 0.2);
+}
+
+.dv-pview-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--gold-jackpot);
+  margin-bottom: 8px;
+}
+
+.dv-pview-text,
+.dv-pview-note {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.dv-pview-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(76, 201, 240, 0.2);
+  color: var(--star-cyan);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+/* Spectator betting grid */
+.dv-pview-bet-section {
+  width: 100%;
+  max-width: 480px;
+}
+
+.dv-pview-sub {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--gold-jackpot);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.dv-pview-bet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.dv-pview-bet-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  background: rgba(26, 30, 74, 0.8);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.dv-pview-bet-btn:active {
+  transform: scale(0.96);
+}
+
+.dv-pview-bet-avatar {
+  width: 72px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.dv-pview-bet-rider {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-top: 4px;
+}
+
+.dv-pview-bet-lane {
+  font-size: 11px;
+  color: var(--text-soft);
+}
+
+.dv-pview-bet-confirmed {
+  margin-top: 14px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(6, 214, 160, 0.2);
+  border: 1px solid var(--success);
+  color: var(--success);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.dv-pview-live-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(247, 37, 133, 0.25);
+  border: 1px solid var(--nebula-pink);
+  color: var(--nebula-pink);
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 12px;
+  animation: dvPulse 1.5s infinite;
+}
+
+@keyframes dvPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.98); }
+}
+
+/* Rider Hero & Tutorial */
+.dv-pview-rider-lobby {
+  justify-content: flex-start;
+  gap: 16px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.dv-pview-hero {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(20, 24, 60, 0.9);
+  border: 2px solid;
+  border-radius: 20px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.dv-pview-alert {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--gold-jackpot);
+  text-transform: uppercase;
+}
+
+.dv-pview-horse-hero {
+  width: 180px;
+  height: 100px;
+  object-fit: contain;
+  margin: 10px 0;
+}
+
+.dv-pview-horse-name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.dv-pview-tutorial {
+  width: 100%;
+  background: rgba(26, 30, 74, 0.9);
+  border: 1px solid rgba(76, 201, 240, 0.4);
+  border-radius: 16px;
+  padding: 18px;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.dv-pview-tuto-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--star-cyan);
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.dv-pview-tuto-rules p {
+  font-size: 13.5px;
+  line-height: 1.45;
+  margin: 6px 0;
+  color: var(--text-main);
+}
+
+.dv-pview-practice {
+  margin: 14px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.dv-pview-practice-label {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.dv-pview-practice-btn {
+  width: 100%;
+  padding: 14px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: #0B0D2A;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.1s;
+}
+
+.dv-pview-practice-btn:active {
+  transform: scale(0.97);
+}
+
+.dv-pview-ready-btn {
+  width: 100%;
+  padding: 14px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--nebula-purple), var(--nebula-pink));
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.dv-pview-ready-btn.is-ready {
+  background: var(--success);
+  color: #042416;
+  opacity: 0.9;
+  cursor: default;
+}
+
+/* Countdown */
+.dv-pview-countdown {
+  justify-content: center;
+}
+
+.dv-pview-cd-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.dv-pview-cd-getready {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--text-soft);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.dv-pview-cd-number {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 120px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 0 40px currentColor;
+  animation: dvCount 0.8s ease-out;
+}
+
+.dv-pview-cd-sub {
+  font-size: 14px;
+  color: var(--text-soft);
+}
+
+/* Question Freeze */
+.dv-pview-frozen {
+  justify-content: center;
+  gap: 18px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.dv-pview-frozen-banner {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--star-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.dv-pview-question-card {
+  width: 100%;
+  background: rgba(18, 22, 60, 0.95);
+  border: 2px solid var(--star-cyan);
+  border-radius: 16px;
+  padding: 20px;
+  box-sizing: border-box;
+  text-align: center;
+  box-shadow: 0 0 24px rgba(76, 201, 240, 0.25);
+}
+
+.dv-pview-q-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-jackpot);
+}
+
+.dv-pview-q-text {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 12px 0 0;
+  line-height: 1.4;
+}
+
+.dv-pview-hand-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.dv-pview-hand-btn {
+  width: 100%;
+  padding: 16px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--gold-jackpot), #FFAA00);
+  color: #261600;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(255, 209, 102, 0.4);
+}
+
+.dv-pview-hand-btn.is-raised {
+  background: #2a335a;
+  color: var(--star-cyan);
+  box-shadow: none;
+  cursor: default;
+}
+
+.dv-pview-hand-hint {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.dv-pview-turbo-toast {
+  padding: 10px 20px;
+  background: linear-gradient(90deg, #ff0077, #ffaa00);
+  color: #fff;
+  border-radius: 30px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  animation: dvPulse 0.8s infinite;
+}
+
+/* Finish screen */
+.dv-pview-finish {
+  justify-content: center;
+}
+
+.dv-pview-finish-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: rgba(26, 30, 74, 0.95);
+  border: 2px solid var(--gold-jackpot);
+  border-radius: 20px;
+  padding: 32px 24px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 0 40px rgba(255, 209, 102, 0.3);
+}
+
+.dv-pview-finish-pos {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 64px;
+  font-weight: 700;
+  color: var(--gold-jackpot);
+  line-height: 1;
+}
+
+.dv-pview-finish-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  margin: 0;
+  color: var(--text-main);
+}
+
+.dv-pview-finish-pts {
+  font-family: var(--font-numbers);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--success);
+  background: rgba(6, 214, 160, 0.15);
+  padding: 6px 16px;
+  border-radius: 20px;
+}
+
+/* ========================================================================= */
+/* RUNNING PHASE: HUGE BUTTON & HUD                                          */
+/* ========================================================================= */
+.dv-pview-running {
+  padding: 12px 16px 20px;
+  gap: 12px;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.dv-pview-hud {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(16, 20, 52, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 8px 14px;
+  box-sizing: border-box;
+}
+
+.dv-pview-hud-rank {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 44px;
+}
+
+.dv-pview-hud-rank span {
+  font-size: 10px;
+  color: var(--text-soft);
+  text-transform: uppercase;
+}
+
+.dv-pview-hud-rank strong {
+  font-family: var(--font-numbers);
+  font-size: 18px;
+  color: var(--gold-jackpot);
+}
+
+.dv-pview-hud-bar {
+  flex: 1;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.dv-pview-hud-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.12s linear;
+}
+
+.dv-pview-hud-rhythm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 50px;
+}
+
+.dv-pview-hud-rhythm span {
+  font-family: var(--font-numbers);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--star-cyan);
+}
+
+.dv-pview-hud-rhythm small {
+  font-size: 9px;
+  color: var(--text-soft);
+}
+
+.dv-pview-turbo-active {
+  padding: 6px 18px;
+  background: linear-gradient(90deg, #ff0077, #ffc24b);
+  color: #fff;
+  border-radius: 20px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  animation: dvPulse 0.6s infinite;
+}
+
+/* HUGE TAP BUTTON (>= 60% of the screen) */
+.dv-pview-huge-tap {
+  flex: 1;
+  width: 100%;
+  max-width: 500px;
+  min-height: 58vh;
+  border-radius: 28px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+  transition: transform 0.06s cubic-bezier(0.2, 0.8, 0.4, 1.2);
+}
+
+.dv-pview-huge-tap:active {
+  transform: scale(0.96);
+}
+
+.dv-pview-tap-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.dv-pview-tap-horse {
+  width: 200px;
+  height: 120px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.dv-pview-tap-text {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 900;
+  color: #07091a;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.4);
+}
+
+.dv-pview-tap-sub {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: #07091a;
+  opacity: 0.85;
+}
+
+.dv-pview-footer {
+  font-size: 12px;
+  color: var(--text-soft);
+  text-align: center;
+}
+

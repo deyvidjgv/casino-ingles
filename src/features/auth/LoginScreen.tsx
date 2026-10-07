@@ -67,7 +67,10 @@ export function LoginScreen() {
     setJoining(true);
     try {
       const uid = await joinAsStudent(name);
-      if (!uid) return;
+      if (!uid) {
+        setCodeError('joinFailed');
+        return;
+      }
       const course = await findCourseByCode(code);
       if (!course) {
         setCodeError('badCode');

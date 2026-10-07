@@ -168,19 +168,19 @@ export const useAuthStore = create<AuthState>()(
       joinAsStudent: async name => {
         set({ busy: true, error: null });
         const label = name.trim() || 'Student';
-        let uid: string;
         try {
           const { auth, signInAnonymously } = await firebaseAuth();
-          uid = (await signInAnonymously(auth)).user.uid;
-        } catch {
-          // anonymous sign-in off or offline: the student still plays, just device-local
-          uid = `guest-${crypto.randomUUID()}`;
+          const res = await signInAnonymously(auth);
+          const uid = res.user.uid;
+          set({
+            user: { uid, name: label, email: null, role: 'student', provider: 'guest' },
+            busy: false, ready: true,
+          });
+          return uid;
+        } catch (e) {
+          set({ busy: false, error: errorKey(e) });
+          return null;
         }
-        set({
-          user: { uid, name: label, email: null, role: 'student', provider: 'guest' },
-          busy: false, ready: true,
-        });
-        return uid;
       },
 
       signOut: async () => {

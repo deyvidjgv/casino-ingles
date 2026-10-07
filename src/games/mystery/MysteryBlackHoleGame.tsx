@@ -93,10 +93,25 @@ export function MysteryBlackHoleGame({ island, onExit }: GameProps) {
     item: MysteryItem;
   }[]>([]);
 
-  const [activeRevealed, setActiveRevealed] = useState<{ boxIdx: number; item: MysteryItem } | null>(null);
+  const [activeRevealed, setActiveRevealed] = useState<{ boxId: string; item: MysteryItem } | null>(null);
   const [shuffling, setShuffling] = useState(false);
 
   const boxRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const closeAllBoxes = useCallback((cb?: () => void) => {
+    setActiveRevealed(null);
+    const nodes = boxRefs.current.filter(Boolean) as HTMLDivElement[];
+    if (nodes.length) {
+      gsap.to(nodes, { scale: 1, duration: 0.2, ease: 'power2.out' });
+    }
+    setBoxes(prev => {
+      if (config.mode === 'eliminate') {
+        return prev.filter(b => !b.opened).map(b => ({ ...b, opened: false, opening: false }));
+      }
+      return prev.map(b => ({ ...b, opened: false, opening: false }));
+    });
+    if (cb) setTimeout(cb, 250);
+  }, [config.mode]);
 
   // One deal for the whole board, so no two boxes hold the same thing and some hold nothing.
   const buildItems = (type: ContentType, count: number, availableStudents: typeof students): MysteryItem[] => {
@@ -139,6 +154,10 @@ export function MysteryBlackHoleGame({ island, onExit }: GameProps) {
 
   const summonBoxes = () => {
     setActiveRevealed(null);
+    const nodes = boxRefs.current.filter(Boolean) as HTMLDivElement[];
+    if (nodes.length) {
+      gsap.set(nodes, { scale: 1, x: 0, y: 0 });
+    }
     const distinctStudents = requiresStudents ? [...pool.available] : [];
     const items = buildItems(config.contentType, config.boxCount, distinctStudents);
     setBoxes(items.map((item, i) => ({
@@ -156,15 +175,34 @@ export function MysteryBlackHoleGame({ island, onExit }: GameProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.boxCount, config.contentType, config.mode]);
 
-  /** Three seconds of boxes trading places, so nobody can follow one. */
+  /** Boxes trading places. Always closes and hides any reveals first! */
   function shuffleBoxes() {
-    if (shuffling || boxes.length < 2) return;
+    if (shuffling || boxes.length < 2 || pending !== null || boxes.some(b => b.opening)) return;
+
+    // RULE: In any case, close all boxes before shuffling!
+    setActiveRevealed(null);
+    const nodes = boxRefs.current.filter(Boolean) as HTMLDivElement[];
+    if (nodes.length) {
+      gsap.to(nodes, { scale: 1, duration: 0.2, ease: 'power2.out' });
+    }
+
+    // In eliminate mode, remove opened boxes before shuffling
+    const currentEligible = config.mode === 'eliminate'
+      ? boxes.filter(b => !b.opened).map(b => ({ ...b, opened: false, opening: false }))
+      : boxes.map(b => ({ ...b, opened: false, opening: false }));
+
+    if (currentEligible.length < 2) {
+      setBoxes(currentEligible);
+      return;
+    }
+
+    setBoxes(currentEligible);
     setShuffling(true);
     sfx.whoosh();
 
     const PASSES = 5;
     const STEP = 3 / PASSES;
-    let current = boxes;
+    let current = currentEligible;
     let pass = 0;
 
     const runPass = () => {
@@ -173,12 +211,11 @@ export function MysteryBlackHoleGame({ island, onExit }: GameProps) {
         setShuffling(false);
         return;
       }
-      const nodes = els as HTMLDivElement[];
-      // order[i] = the slot box i moves into on this pass
+      const activeNodes = els as HTMLDivElement[];
       const order = shuffled(current.map((_, i) => i));
-      const before = nodes.map(el => el.getBoundingClientRect());
+      const before = activeNodes.map(el => el.getBoundingClientRect());
 
-      gsap.to(nodes, {
+      gsap.to(activeNodes, {
         x: (i: number) => before[order[i]].left - before[i].left,
         y: (i: number) => before[order[i]].top - before[i].top,
         duration: STEP,
@@ -186,8 +223,7 @@ export function MysteryBlackHoleGame({ island, onExit }: GameProps) {
         onComplete: () => {
           const next = current.slice();
           current.forEach((b, i) => { next[order[i]] = b; });
-          // clear the transforms in the same task as the reorder, so there is no flash
-          gsap.set(nodes, { x: 0, y: 0 });
+          gsap.set(activeNodes, { x: 0, y: 0 });
           current = next;
           setBoxes(next);
           pass++;
@@ -201,34 +237,40 @@ export function MysteryBlackHoleGame({ island, onExit }: GameProps) {
       });
     };
 
-    runPass();
+    // Give 250ms for lid and scale to return to completely closed state
+    setTimeout(runPass, 250);
   }
 
   function openBox(index: number) {
+    if (shuffling || pending !== null || boxes.some(b => b.opening)) return;
     const targetBox = boxes[index];
     if (!targetBox || targetBox.opened || targetBox.opening) return;
+
+    // If another box is open, close it before opening the new one
+    setActiveRevealed(null);
+    boxRefs.current.forEach((el, idx) => {
+      if (el && idx !== index) gsap.to(el, { scale: 1, duration: 0.2 });
+    });
 
     setBoxes(prev => prev.map((b, i) => (i === index ? { ...b, opening: true } : b)));
     sfx.lever();
 
     const boxEl = boxRefs.current[index];
     if (!boxEl) {
-      finishOpen(index, targetBox.item);
+      finishOpen(targetBox.id, targetBox.item);
       return;
     }
-    // A short tremble, then open. The long version plus a canvas burst was what made
-    // picking a box feel sluggish.
-    gsap.timeline({ onComplete: () => finishOpen(index, targetBox.item) })
+    gsap.timeline({ onComplete: () => finishOpen(targetBox.id, targetBox.item) })
       .to(boxEl, { x: '+=5', yoyo: true, repeat: 3, duration: 0.06, ease: 'power1.inOut' })
       .set(boxEl, { x: 0 })
       .to(boxEl, { scale: 1.1, duration: 0.2, ease: 'back.out(1.5)' });
   }
 
-  function finishOpen(index: number, item: MysteryItem) {
+  function finishOpen(boxId: string, item: MysteryItem) {
     setBoxes(prev =>
-      prev.map((b, i) => (i === index ? { ...b, opening: false, opened: true } : b))
+      prev.map(b => (b.id === boxId ? { ...b, opening: false, opened: true } : b))
     );
-    setActiveRevealed({ boxIdx: index, item });
+    setActiveRevealed({ boxId, item });
 
     const pointsAtStake = item.empty ? 0 : (item.pointsDelta || 0) + config.points;
     const summaryText = `[${item.tag}] ${item.title}`;
@@ -244,6 +286,11 @@ export function MysteryBlackHoleGame({ island, onExit }: GameProps) {
       onSettled({ text: summaryText, chips: [], saved: item.empty }, 0, []);
     }
   }
+
+  const handleJudge = (verdict: Parameters<typeof judge>[0]) => {
+    judge(verdict);
+    closeAllBoxes();
+  };
 
   function startGame(next: MysteryConfig) {
     setConfig(next);
@@ -346,7 +393,7 @@ export function MysteryBlackHoleGame({ island, onExit }: GameProps) {
                     </div>
 
                     {/* Content reveal card while active */}
-                    {activeRevealed?.boxIdx === idx && (
+                    {activeRevealed?.boxId === b.id && (
                       <div className="rc-cut my-content-reveal">
                         <span className="my-reveal-tag">{b.item.tag}</span>
                         <div className="my-reveal-title">{b.item.title}</div>
@@ -360,7 +407,7 @@ export function MysteryBlackHoleGame({ island, onExit }: GameProps) {
 
           <div className="my-controls">
             {pending ? (
-              <AnswerJudge names={pending.names} points={pending.points} summary={pending.summary} onJudge={judge} />
+              <AnswerJudge names={pending.names} points={pending.points} summary={pending.summary} onJudge={handleJudge} />
             ) : allOpened ? (
               <button type="button" className="rc-cut gm-btn gm-btn-primary" onClick={summonBoxes}>
                 {t('mystery.summonMore')}
@@ -372,11 +419,16 @@ export function MysteryBlackHoleGame({ island, onExit }: GameProps) {
                   type="button"
                   className="rc-cut gm-btn"
                   onClick={shuffleBoxes}
-                  disabled={shuffling || boxes.length < 2}
+                  disabled={shuffling || boxes.length < 2 || pending !== null || boxes.some(b => b.opening)}
                 >
                   {shuffling ? t('mystery.shuffling') : t('mystery.shuffle')}
                 </button>
-                <button type="button" className="rc-cut gm-btn" onClick={summonBoxes} disabled={shuffling}>
+                <button
+                  type="button"
+                  className="rc-cut gm-btn"
+                  onClick={summonBoxes}
+                  disabled={shuffling || pending !== null || boxes.some(b => b.opening)}
+                >
                   {t('mystery.summonMore')}
                 </button>
               </>

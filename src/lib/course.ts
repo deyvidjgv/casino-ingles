@@ -43,6 +43,13 @@ export async function createCourse(teacherId: string, courseName: string): Promi
     await setDoc(doc(db, 'courses', courseId), {
       teacherId, code, name: courseName, createdAt: serverTimestamp(),
     });
+    try {
+      const { rtdb } = await import('./firebase');
+      const { ref: dbRef, set: dbSet } = await import('firebase/database');
+      await dbSet(dbRef(rtdb, `courses/${courseId}`), { teacherId });
+    } catch {
+      // Non-fatal if offline
+    }
     return { id: courseId, code };
   }
   throw new Error('Could not claim a free class code');
@@ -60,13 +67,18 @@ export async function findCourseByCode(code: string): Promise<Course | null> {
  * Adds the student to the roster. The rules only allow a student to create their own member
  * document and only with zero points, so this cannot be used to award points.
  */
-export async function joinCourse(courseId: string, uid: string, name: string): Promise<void> {
+export async function joinCourse(
+  courseId: string,
+  uid: string,
+  name: string,
+  type: 'account' | 'guest' = 'guest',
+): Promise<void> {
   const { db, doc, setDoc, updateDoc } = await store();
   const ref = doc(db, 'courses', courseId, 'members', uid);
   try {
     // First join. Reading the document first is not an option: the rules require membership
     // to read it, so the check would be denied rather than report "missing".
-    await setDoc(ref, { name, points: 0, active: true });
+    await setDoc(ref, { name, points: 0, active: true, type });
   } catch {
     // Already on the roster — writing points: 0 again is rejected by the rules, which is what
     // stops a student resetting their own score. Touch only the fields they may change.
@@ -91,13 +103,15 @@ export function subscribeMembers(
         snap => {
           onChange(snap.docs.map(d => {
             const data = d.data();
+            const memberType = (data.type as Student['type']) ?? 'guest';
             return {
               id: d.id,
-              uid: d.id,
+              uid: memberType === 'manual' ? undefined : d.id,
               name: (data.name as string) ?? 'Student',
               points: (data.points as number) ?? 0,
               active: (data.active as boolean) ?? true,
               avatarSeed: (data.name as string) ?? d.id,
+              type: memberType,
             };
           }));
         },
@@ -127,7 +141,7 @@ export async function setMemberActive(courseId: string, uid: string, active: boo
 export async function addMember(courseId: string, name: string): Promise<void> {
   const { db, doc, setDoc } = await store();
   await setDoc(doc(db, 'courses', courseId, 'members', crypto.randomUUID()), {
-    name, points: 0, active: true,
+    name, points: 0, active: true, type: 'manual',
   });
 }
 

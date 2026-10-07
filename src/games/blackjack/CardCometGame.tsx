@@ -4,7 +4,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useTranslation } from 'react-i18next';
 import { useClassStore } from '../../store/classStore';
-import { pickDistinct, pickOne } from '../../lib/random';
+import { pickDistinct, pickOne, shuffled } from '../../lib/random';
 import { sfx } from '../../lib/sfx';
 import {
   AnswerJudge,
@@ -58,6 +58,25 @@ const SUITS: { suit: CardSuit; isRed: boolean }[] = [
   { suit: '♣', isRed: false },
 ];
 const RANKS: CardRank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+function generateShoe(): CardItem[] {
+  const deck: CardItem[] = [];
+  for (const s of SUITS) {
+    for (const r of RANKS) {
+      let val = 10;
+      if (r === 'A') val = 11;
+      else if (!['J', 'Q', 'K'].includes(r)) val = parseInt(r, 10);
+      deck.push({
+        id: crypto.randomUUID(),
+        suit: s.suit,
+        rank: r,
+        isRed: s.isRed,
+        value: val,
+      });
+    }
+  }
+  return shuffled(deck);
+}
 
 function createCard(rank?: CardRank, suitObj?: { suit: CardSuit; isRed: boolean }): CardItem {
   const chosenSuit = suitObj ?? pickOne(SUITS);
@@ -131,6 +150,16 @@ export function CardCometGame({ island, onExit }: GameProps) {
   const [activeQuestion, setActiveQuestion] = useState<{ text: string; forPlayer: string; target: 'p1' | 'p2' } | null>(null);
 
   const tableRef = useRef<HTMLDivElement>(null);
+  const shoeRef = useRef<CardItem[]>([]);
+  const dealerHandRef = useRef<CardItem[]>([]);
+  const isDealingRef = useRef(false);
+
+  const drawCardFromShoe = useCallback((): CardItem => {
+    if (shoeRef.current.length < 10) {
+      shoeRef.current = generateShoe();
+    }
+    return shoeRef.current.pop()!;
+  }, []);
 
   const minRequiredStudents = config.gameMode === 'blackjack' ? 2 : config.drawPreset === '3s' ? 3 : config.drawPreset === '2s' ? 2 : 1;
   const blocker = students.length < minRequiredStudents
@@ -227,119 +256,12 @@ export function CardCometGame({ island, onExit }: GameProps) {
     }
   }
 
-  function startBlackjackRound() {
-    if (blocker) return;
-    setActiveQuestion(null);
-    setDealerHoleFlipped(false);
-
-    const [p1Choice, p2Choice] = pickDistinct(pool.available, 2);
-    setP1(p1Choice);
-    setP2(p2Choice);
-
-    // Deal 2 cards each to P1 & P2, 2 to dealer (1 face up, 1 face down)
-    const d1 = createCard(), d2 = createCard();
-    const p1c1 = createCard(), p1c2 = createCard();
-    const p2c1 = createCard(), p2c2 = createCard();
-
-    setDealerHand([d1, d2]);
-    setP1Hand([p1c1, p1c2]);
-    setP2Hand([p2c1, p2c2]);
-    setTurn('p1');
-    sfx.cardFlip();
-    requestAnimationFrame(() => {
-      if (tableRef.current) {
-        gsap.fromTo(
-          tableRef.current.querySelectorAll('.bk-card-wrap'),
-          { y: -25, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.4, stagger: 0.06, ease: 'power2.out' }
-        );
-      }
-    });
-  }
-
-  // Soft Rule Hit Request
-  function requestHit(target: 'p1' | 'p2') {
-    const studentName = target === 'p1' ? p1?.name : p2?.name;
-    const qList = questions.length ? questions : [{ id: '1', text: 'What is your favorite hobby and why?' }];
-    const chosenQ = pickOne(qList).text;
-    setActiveQuestion({ text: chosenQ, forPlayer: studentName || 'Student', target });
-  }
-
-  // Teacher Answer Validation
-  function handleAnswer(correct: boolean) {
-    if (!activeQuestion) return;
-    const target = activeQuestion.target;
-    setActiveQuestion(null);
-
-    if (correct) {
-      sfx.correct();
-      const newCard = createCard();
-      if (target === 'p1') {
-        const nextHand = [...p1Hand, newCard];
-        setP1Hand(nextHand);
-        const score = calculateHand(nextHand);
-        if (score >= 21) {
-          setTurn('p2');
-        }
-      } else {
-        const nextHand = [...p2Hand, newCard];
-        setP2Hand(nextHand);
-        const score = calculateHand(nextHand);
-        if (score >= 21) {
-          startDealerTurn();
-        }
-      }
-    } else {
-      // SOFT RULE: No card drawn, passes turn without losing existing cards!
-      sfx.wrong();
-      if (target === 'p1') {
-        setTurn('p2');
-      } else {
-        startDealerTurn();
-      }
-    }
-  }
-
-  function handleStand(target: 'p1' | 'p2') {
-    sfx.click();
-    if (target === 'p1') {
-      setTurn('p2');
-    } else {
-      startDealerTurn();
-    }
-  }
-
-  function startDealerTurn() {
-    setTurn('dealer');
-    setDealerHoleFlipped(true);
-    sfx.cardFlip();
-
-    setTimeout(() => {
-      let currentHand = [...dealerHand];
-      let score = calculateHand(currentHand);
-
-      const p1Score = calculateHand(p1Hand);
-      const p2Score = calculateHand(p2Hand);
-      const playersAlive = (p1Score <= 21) || (p2Score <= 21);
-
-      // Dealer hits until 17 if players are alive
-      if (playersAlive) {
-        while (score < 17) {
-          const c = createCard();
-          currentHand.push(c);
-          score = calculateHand(currentHand);
-        }
-      }
-      setDealerHand([...currentHand]);
-      resolveBlackjack([...currentHand]);
-    }, 900);
-  }
-
-  function resolveBlackjack(finalDealerHand: CardItem[]) {
+  function resolveBlackjack(p1H: CardItem[], p2H: CardItem[], finalDealerHand: CardItem[]) {
     setTurn('over');
+    isDealingRef.current = false;
     const dScore = calculateHand(finalDealerHand);
-    const p1Score = calculateHand(p1Hand);
-    const p2Score = calculateHand(p2Hand);
+    const p1Score = calculateHand(p1H);
+    const p2Score = calculateHand(p2H);
 
     const p1Bust = p1Score > 21;
     const p2Bust = p2Score > 21;
@@ -358,12 +280,34 @@ export function CardCometGame({ island, onExit }: GameProps) {
     let kicker = t('blackjack.winnerTitle');
     let bannerText = '';
 
+    const p1Natural = p1Score === 21 && p1H.length === 2;
+    const p2Natural = p2Score === 21 && p2H.length === 2;
+
     if (p1Win && p2Win) {
       bannerText = t('blackjack.bothWin', { p1: p1?.name, p2: p2?.name });
+      if (p1Natural || p2Natural) {
+        kicker = t('blackjack.naturalBlackjack');
+      }
+    } else if (p1Win && p2Tie) {
+      bannerText = t('blackjack.p1WinP2Push', { p1: p1?.name, p1Score, p2: p2?.name, p2Score });
+      if (p1Natural) {
+        kicker = t('blackjack.naturalBlackjack');
+      }
+    } else if (p2Win && p1Tie) {
+      bannerText = t('blackjack.p2WinP1Push', { p2: p2?.name, p2Score, p1: p1?.name, p1Score });
+      if (p2Natural) {
+        kicker = t('blackjack.naturalBlackjack');
+      }
     } else if (p1Win) {
       bannerText = t('blackjack.p1Wins', { name: p1?.name, score: p1Score });
+      if (p1Natural) {
+        kicker = t('blackjack.naturalBlackjack');
+      }
     } else if (p2Win) {
       bannerText = t('blackjack.p2Wins', { name: p2?.name, score: p2Score });
+      if (p2Natural) {
+        kicker = t('blackjack.naturalBlackjack');
+      }
     } else if (p1Tie || p2Tie) {
       bannerText = t('blackjack.push', { score: dScore });
     } else {
@@ -374,8 +318,12 @@ export function CardCometGame({ island, onExit }: GameProps) {
     if (winningIds.length && config.points > 0) {
       addPoints(winningIds, config.points);
     }
-    if (config.mode === 'eliminate' && winningIds.length) {
-      pool.markUsed(winningIds);
+    // In eliminate mode, both participating students have played their round
+    if (config.mode === 'eliminate') {
+      const playedIds = [p1?.id, p2?.id].filter((id): id is string => Boolean(id));
+      if (playedIds.length) {
+        pool.markUsed(playedIds);
+      }
     }
 
     const summaryText = `${p1?.name} (${p1Score}) vs ${p2?.name} (${p2Score}) vs Dealer (${dScore}) → ${bannerText}`;
@@ -384,7 +332,7 @@ export function CardCometGame({ island, onExit }: GameProps) {
       game: 'blackjack',
       summary: summaryText,
       studentIds: winningIds,
-      points: config.points,
+      points: winningIds.length ? config.points : 0,
     });
     setRounds(r => [...r, {
       text: `${kicker} — ${bannerText}`,
@@ -399,10 +347,162 @@ export function CardCometGame({ island, onExit }: GameProps) {
     }
   }
 
+  function startDealerTurn(p1H: CardItem[], p2H: CardItem[]) {
+    setTurn('dealer');
+    setDealerHoleFlipped(true);
+    sfx.cardFlip();
+
+    setTimeout(() => {
+      let currentHand = [...dealerHandRef.current];
+      let score = calculateHand(currentHand);
+
+      const p1Score = calculateHand(p1H);
+      const p2Score = calculateHand(p2H);
+      const playersAlive = (p1Score <= 21) || (p2Score <= 21);
+
+      // Dealer hits until 17 if players are alive
+      if (playersAlive) {
+        while (score < 17) {
+          const c = drawCardFromShoe();
+          currentHand.push(c);
+          score = calculateHand(currentHand);
+        }
+      }
+      dealerHandRef.current = currentHand;
+      setDealerHand([...currentHand]);
+      resolveBlackjack(p1H, p2H, currentHand);
+    }, 900);
+  }
+
+  function startBlackjackRound() {
+    if (blocker || isDealingRef.current) return;
+    isDealingRef.current = true;
+    setActiveQuestion(null);
+    setDealerHoleFlipped(false);
+
+    const [p1Choice, p2Choice] = pickDistinct(pool.available, 2);
+    setP1(p1Choice);
+    setP2(p2Choice);
+
+    // Deal 2 cards each to P1 & P2, 2 to dealer (1 face up, 1 face down) from 52-card shoe
+    const d1 = drawCardFromShoe();
+    const d2 = drawCardFromShoe();
+    const p1c1 = drawCardFromShoe();
+    const p1c2 = drawCardFromShoe();
+    const p2c1 = drawCardFromShoe();
+    const p2c2 = drawCardFromShoe();
+
+    const dHand = [d1, d2];
+    const p1HandInit = [p1c1, p1c2];
+    const p2HandInit = [p2c1, p2c2];
+
+    dealerHandRef.current = dHand;
+    setDealerHand(dHand);
+    setP1Hand(p1HandInit);
+    setP2Hand(p2HandInit);
+
+    const p1ScoreInit = calculateHand(p1HandInit);
+    const p2ScoreInit = calculateHand(p2HandInit);
+
+    if (p1ScoreInit === 21 && p2ScoreInit === 21) {
+      setTurn('dealer');
+      setTimeout(() => {
+        startDealerTurn(p1HandInit, p2HandInit);
+      }, 900);
+    } else if (p1ScoreInit === 21) {
+      setTurn('p2');
+      isDealingRef.current = false;
+    } else {
+      setTurn('p1');
+      isDealingRef.current = false;
+    }
+
+    sfx.cardFlip();
+    requestAnimationFrame(() => {
+      if (tableRef.current) {
+        gsap.fromTo(
+          tableRef.current.querySelectorAll('.bk-card-wrap'),
+          { y: -25, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.4, stagger: 0.06, ease: 'power2.out' }
+        );
+      }
+    });
+  }
+
+  // Soft Rule Hit Request
+  function requestHit(target: 'p1' | 'p2') {
+    if (questions.length === 0) return;
+    const studentName = target === 'p1' ? p1?.name : p2?.name;
+    const chosenQ = pickOne(questions).text;
+    setActiveQuestion({ text: chosenQ, forPlayer: studentName || 'Student', target });
+  }
+
+  // Teacher Answer Validation
+  function handleAnswer(correct: boolean) {
+    if (!activeQuestion) return;
+    const target = activeQuestion.target;
+    setActiveQuestion(null);
+
+    if (correct) {
+      sfx.correct();
+      const newCard = drawCardFromShoe();
+      if (target === 'p1') {
+        const nextHand = [...p1Hand, newCard];
+        setP1Hand(nextHand);
+        const score = calculateHand(nextHand);
+        if (score >= 21) {
+          const p2Score = calculateHand(p2Hand);
+          if (p2Score >= 21) {
+            startDealerTurn(nextHand, p2Hand);
+          } else {
+            setTurn('p2');
+          }
+        }
+      } else {
+        const nextHand = [...p2Hand, newCard];
+        setP2Hand(nextHand);
+        const score = calculateHand(nextHand);
+        if (score >= 21) {
+          startDealerTurn(p1Hand, nextHand);
+        }
+      }
+    } else {
+      // SOFT RULE: No card drawn, passes turn without losing existing cards!
+      sfx.wrong();
+      if (target === 'p1') {
+        const p2Score = calculateHand(p2Hand);
+        if (p2Score >= 21) {
+          startDealerTurn(p1Hand, p2Hand);
+        } else {
+          setTurn('p2');
+        }
+      } else {
+        startDealerTurn(p1Hand, p2Hand);
+      }
+    }
+  }
+
+  function handleStand(target: 'p1' | 'p2') {
+    sfx.click();
+    if (target === 'p1') {
+      const p2Score = calculateHand(p2Hand);
+      if (p2Score >= 21) {
+        startDealerTurn(p1Hand, p2Hand);
+      } else {
+        setTurn('p2');
+      }
+    } else {
+      startDealerTurn(p1Hand, p2Hand);
+    }
+  }
+
   function startGame(next: CardCometConfig) {
     setConfig(next);
     pool.reset();
     setRounds([]);
+    shoeRef.current = generateShoe();
+    dealerHandRef.current = [];
+    isDealingRef.current = false;
     setPhase('play');
 
     if (next.gameMode === 'draw') {
@@ -599,7 +699,8 @@ export function CardCometGame({ island, onExit }: GameProps) {
                         <button
                           type="button"
                           className="rc-cut gm-btn gm-btn-primary"
-                          disabled={p1Score >= 21}
+                          disabled={p1Score >= 21 || questions.length === 0}
+                          title={questions.length === 0 ? t('blackjack.noQuestions') : undefined}
                           onClick={() => requestHit('p1')}
                         >
                           {t('blackjack.hit')}
@@ -643,7 +744,8 @@ export function CardCometGame({ island, onExit }: GameProps) {
                         <button
                           type="button"
                           className="rc-cut gm-btn gm-btn-primary"
-                          disabled={p2Score >= 21}
+                          disabled={p2Score >= 21 || questions.length === 0}
+                          title={questions.length === 0 ? t('blackjack.noQuestions') : undefined}
                           onClick={() => requestHit('p2')}
                         >
                           {t('blackjack.hit')}
